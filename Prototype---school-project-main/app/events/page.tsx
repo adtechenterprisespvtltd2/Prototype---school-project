@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Header from '@/components/header'
+import { SiteFooter } from '@/components/home-sections'
 import { Calendar, MapPin, Users, ArrowLeft, Filter, Image as ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 
@@ -178,6 +179,7 @@ export default function EventsPage() {
           Back to Home
         </Link>
       </div>
+      <SiteFooter />
     </main>
   )
 }

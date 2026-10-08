@@ -30,6 +30,8 @@ type NewHomework = Omit<Homework, 'id' | 'assignedOn'>
 
 interface SchoolDataContextType {
   data: SchoolData
+  // False during server rendering and the first client render, before saved data is loaded.
+  ready: boolean
   // attendance
   setAttendance: (date: string, studentId: string, status: AttendanceStatus) => void
   setAttendanceBulk: (date: string, entries: Record<string, AttendanceStatus>) => void
@@ -251,6 +253,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
   const value = useMemo(
     () => ({
       data,
+      ready: hydrated,
       setAttendance,
       setAttendanceBulk,
       setMark,
@@ -271,7 +274,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
       updateTimetableSlot,
       resetDemoData,
     }),
-    [data, setAttendance, setAttendanceBulk, setMark, setExamPublished, addExam, addHomework, deleteHomework, submitHomework, reviewSubmission, recordPayment, addNotice, deleteNotice, addNote, addQuestionSet, addPaper, deleteMaterial, sendMessage, updateTimetableSlot, resetDemoData]
+    [data, hydrated, setAttendance, setAttendanceBulk, setMark, setExamPublished, addExam, addHomework, deleteHomework, submitHomework, reviewSubmission, recordPayment, addNotice, deleteNotice, addNote, addQuestionSet, addPaper, deleteMaterial, sendMessage, updateTimetableSlot, resetDemoData]
   )
 
   return <SchoolDataContext.Provider value={value}>{children}</SchoolDataContext.Provider>

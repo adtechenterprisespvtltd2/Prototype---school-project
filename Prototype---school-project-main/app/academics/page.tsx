@@ -1,6 +1,7 @@
 'use client'
 
 import Header from '@/components/header'
+import { SiteFooter } from '@/components/home-sections'
 import { BookOpen, Users, Award, Sparkles, ArrowRight, Target, Star, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -168,6 +169,7 @@ export default function AcademicsPage() {
           </Link>
         </div>
       </section>
+      <SiteFooter />
     </main>
   )
 }

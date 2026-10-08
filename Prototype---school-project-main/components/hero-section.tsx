@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles, Award, Users } from 'lucide-react'
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-[650px] overflow-hidden">
+    <section className="relative min-h-[520px] sm:min-h-[600px] overflow-hidden">
       {/* School Building Background Image - Full Background */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -37,7 +37,7 @@ export default function HeroSection() {
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-lg animate-fade-in-up">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-lg animate-fade-in-up">
             Shaping Future
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-blue-300 animate-gradient drop-shadow-lg">
               Leaders
@@ -48,22 +48,6 @@ export default function HeroSection() {
           <p className="text-lg md:text-xl text-white max-w-2xl mx-auto mb-10 leading-relaxed drop-shadow-md font-medium animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             Where tradition meets innovation. Experience world-class education designed to nurture curiosity, build character, and prepare students for global success.
           </p>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-12 max-w-2xl mx-auto">
-            <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-5 hover:bg-white/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              <div className="text-3xl md:text-4xl font-bold text-white drop-shadow-md">50+</div>
-              <div className="text-sm text-white/90 font-semibold mt-1">Programs</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-5 hover:bg-white/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-              <div className="text-3xl md:text-4xl font-bold text-white drop-shadow-md">10K+</div>
-              <div className="text-sm text-white/90 font-semibold mt-1">Students</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-5 hover:bg-white/30 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
-              <div className="text-3xl md:text-4xl font-bold text-white drop-shadow-md">98%</div>
-              <div className="text-sm text-white/90 font-semibold mt-1">Success</div>
-            </div>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up" style={{ animationDelay: '0.6s' }}>

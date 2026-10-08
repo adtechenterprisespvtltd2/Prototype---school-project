@@ -1,6 +1,7 @@
 'use client'
 
 import Header from '@/components/header'
+import { SiteFooter } from '@/components/home-sections'
 import { Heart, Target, Zap, Users, Award, ArrowRight, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -142,6 +143,7 @@ export default function AboutPage() {
           Back to Home
         </Link>
       </div>
+      <SiteFooter />
     </main>
   )
 }

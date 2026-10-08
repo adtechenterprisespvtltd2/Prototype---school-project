@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Header from '@/components/header'
+import { SiteFooter } from '@/components/home-sections'
 import { Bell, AlertCircle, Info, CheckCircle, Calendar, Star, ArrowRight, Clock, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useSchoolData } from '@/context/school-data-context'
@@ -10,7 +11,7 @@ import { noticesFor } from '@/lib/school-data'
 export default function NoticesPage() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [starred, setStarred] = useState<string[]>([])
-  const { data } = useSchoolData()
+  const { data, ready } = useSchoolData()
 
   // Public page: only notices the principal published for everyone.
   const notices = noticesFor(data.notices, 'everyone').filter((n) => n.audience === 'everyone')
@@ -64,7 +65,13 @@ export default function NoticesPage() {
 
         {/* Notices List */}
         <div className="space-y-6 mb-12">
-          {filteredNotices.length > 0 ? (
+          {!ready ? (
+            <div className="space-y-6">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-200/70" />
+              ))}
+            </div>
+          ) : filteredNotices.length > 0 ? (
             filteredNotices.map((notice) => (
               <div 
                 key={notice.id} 
@@ -148,6 +155,7 @@ export default function NoticesPage() {
           Back to Home
         </Link>
       </div>
+      <SiteFooter />
     </main>
   )
 }

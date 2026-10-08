@@ -190,6 +190,26 @@ export const HOLIDAYS: Record<string, string> = {
 
 export const TERM_START = '2026-06-15'
 
+// School calendar shown on the homepage (holidays and exams are added to it).
+export const SCHOOL_EVENTS: { date: string; title: string; detail: string; kind: 'event' | 'meeting' | 'sports' | 'cultural' }[] = [
+  { date: '2026-10-17', title: 'Parent-Teacher Meeting', detail: 'Classes 10A & 10B · 10 AM – 1 PM', kind: 'meeting' },
+  { date: '2026-11-14', title: "Children's Day celebrations", detail: 'Assembly and cultural programme', kind: 'cultural' },
+  { date: '2026-11-21', title: 'Annual Sports Day', detail: 'School stadium · 9 AM onwards', kind: 'sports' },
+  { date: '2026-12-12', title: 'Science Fair', detail: 'Student projects · Auditorium', kind: 'event' },
+  { date: '2026-12-19', title: 'Annual Day', detail: 'Open-air theatre · 6 PM', kind: 'cultural' },
+  { date: '2027-01-26', title: 'Republic Day', detail: 'Flag hoisting · 8 AM', kind: 'event' },
+]
+
+export const SCHOOL_INFO = {
+  name: 'EduPro High School',
+  address: '123 Education Lane, Science City, SC 50001',
+  phone: '+91 98200 00000',
+  email: 'info@edupro.school',
+  hours: 'Mon – Fri, 8:00 AM – 4:00 PM',
+  principal: 'Mr. David Brown',
+  board: 'CBSE (sample affiliation for prototype)',
+}
+
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export const INSTALLMENTS: Installment[] = MONTHS.map((month, i) => ({

@@ -418,3 +418,17 @@
 html {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Homepage notices ticker */
+@keyframes notice-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.notice-marquee {
+  animation: notice-marquee 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-marquee {
+    animation: none;
+  }
+}

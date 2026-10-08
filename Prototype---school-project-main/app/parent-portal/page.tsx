@@ -8,6 +8,8 @@ import { BookOpen, TrendingUp, AlertCircle, CheckCircle, Clock, CreditCard, Aler
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
 import MobileTabs, { type MobileTab } from '@/components/mobile-tabs'
+import { UpdatesPanel } from '@/components/school/updates'
+import { usePortalTab } from '@/lib/use-portal-tab'
 import { useSchoolData } from '@/context/school-data-context'
 import { AttendanceCalendar } from '@/components/school/attendance'
 import { ReportCard } from '@/components/school/results'
@@ -27,7 +29,7 @@ function ParentPortalContent() {
     { id: 'notices', label: 'Notices', icon: Bell },
     { id: 'timetable', label: 'Timetable', icon: CalendarRange },
   ]
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = usePortalTab<string>('overview')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentStep, setPaymentStep] = useState<'select' | 'qr' | 'processing' | 'success'>('select')
   const [selectedMethod, setSelectedMethod] = useState<'card' | 'upi' | 'bank'>('upi')
@@ -143,7 +145,7 @@ function ParentPortalContent() {
 
         {/* Tabs */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden mb-8">
-          <div className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
+          <div data-portal-tabs className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
@@ -239,6 +241,7 @@ function ParentPortalContent() {
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-8">
+                <UpdatesPanel />
                 <h3 className="text-3xl font-bold text-slate-900 mb-6">Academic Performance{latestExam && <span className="block text-base font-semibold text-slate-500 mt-1">{latestExam.name}</span>}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {courses.map((course, idx) => (

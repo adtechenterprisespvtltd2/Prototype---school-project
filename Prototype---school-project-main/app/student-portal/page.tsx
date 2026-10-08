@@ -8,6 +8,8 @@ import { BookOpen, Clock, CheckCircle, CalendarCheck2, AlertCircle, Download, Aw
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
 import MobileTabs, { type MobileTab } from '@/components/mobile-tabs'
+import { UpdatesPanel } from '@/components/school/updates'
+import { usePortalTab } from '@/lib/use-portal-tab'
 import { useSchoolData } from '@/context/school-data-context'
 import { formatDate, noticesFor } from '@/lib/school-data'
 import { AttendanceCalendar } from '@/components/school/attendance'
@@ -30,7 +32,7 @@ function StudentPortalContent() {
     { id: 'notes', label: 'Notes', icon: NotebookPen },
     { id: 'timetable', label: 'Timetable', icon: CalendarRange },
   ]
-  const [activeTab, setActiveTab] = useState('courses')
+  const [activeTab, setActiveTab] = usePortalTab<string>('courses')
 
   const notices = noticesFor(data.notices, 'students')
 
@@ -95,7 +97,7 @@ function StudentPortalContent() {
         {/* Tabs Section */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
           {/* Tab Buttons */}
-          <div className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
+          <div data-portal-tabs className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('courses')}
               className={`flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
@@ -212,6 +214,7 @@ function StudentPortalContent() {
           <div className="p-4 sm:p-6 lg:p-10 bg-gradient-to-b from-white to-slate-50">
             {activeTab === 'courses' && (
               <div className="space-y-6">
+                <UpdatesPanel />
                 {courses.map((course) => (
                   <div key={course.id} className="group bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
                     <div className="flex justify-between items-start mb-6">

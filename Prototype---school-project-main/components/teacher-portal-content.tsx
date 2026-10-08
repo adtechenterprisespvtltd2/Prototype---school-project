@@ -21,6 +21,7 @@ MessageCircle,
   Clock3,
   X,
   CalendarRange,
+  ArrowRight,
 } from 'lucide-react'
 import TimetableView from '@/components/timetable-view'
 import MobileTabs from '@/components/mobile-tabs'
@@ -29,6 +30,8 @@ import { AttendanceManager } from '@/components/school/attendance'
 import { ResultsManager } from '@/components/school/results'
 import { HomeworkManager } from '@/components/school/homework'
 import { TeacherInbox } from '@/components/school/messages'
+import { ClassNoticeComposer } from '@/components/school/updates'
+import { usePortalTab } from '@/lib/use-portal-tab'
 import { ClassId, examResult, studentsIn, summarizeAttendance, todayISO } from '@/lib/school-data'
 
 type PortalTab =
@@ -93,7 +96,7 @@ function AttachmentPicker({
 
 function TeacherPortalContent() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<PortalTab>('dashboard')
+  const [activeTab, setActiveTab] = usePortalTab<PortalTab>('dashboard')
 
   const [noteForm, setNoteForm] = useState({ title: '', subject: '', summary: '' })
   const [questionForm, setQuestionForm] = useState({ subject: '', chapter: '', questions: '', difficulty: 'Medium', marks: '' })
@@ -234,7 +237,7 @@ function TeacherPortalContent() {
 
       <div className="mx-auto max-w-7xl px-4 py-4 sm:py-10">
 <MobileTabs tabs={tabs} active={activeTab} onChange={(id) => setActiveTab(id as PortalTab)} />
-<div className="mb-8 hidden gap-2 overflow-x-auto rounded-3xl border border-slate-200 bg-white p-2 shadow-xl sm:flex">
+<div data-portal-tabs className="mb-8 hidden gap-2 overflow-x-auto rounded-3xl border border-slate-200 bg-white p-2 shadow-xl sm:flex">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const active = activeTab === tab.id
@@ -286,28 +289,38 @@ function TeacherPortalContent() {
               </div>
 
               <div className="mt-8 grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('students')}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-slate-300 hover:bg-white hover:shadow-md"
+                >
                   <div className="flex items-center gap-3">
                     <div className="rounded-xl bg-slate-900 p-3 text-white">
                       <Users size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-bold text-slate-900">Manage Students</p>
                       <p className="text-sm text-slate-600">Track student progress and contact details.</p>
                     </div>
+                    <ArrowRight size={18} className="shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-700" />
                   </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('communication')}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-slate-300 hover:bg-white hover:shadow-md"
+                >
                   <div className="flex items-center gap-3">
                     <div className="rounded-xl bg-blue-900 p-3 text-white">
                       <MessageCircle size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-bold text-slate-900">Parent Communication</p>
                       <p className="text-sm text-slate-600">Send updates about homework, attendance, and results.</p>
                     </div>
+                    <ArrowRight size={18} className="shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-700" />
                   </div>
-                </div>
+                </button>
               </div>
             </div>
 
@@ -625,7 +638,12 @@ function TeacherPortalContent() {
           </section>
         )}
 
-        {activeTab === 'communication' && <TeacherInbox teacherName={teacherName} classId={homeClass} />}
+        {activeTab === 'communication' && (
+          <div className="space-y-6">
+            <ClassNoticeComposer teacherName={teacherName} />
+            <TeacherInbox teacherName={teacherName} classId={homeClass} />
+          </div>
+        )}
 
         {activeTab === 'timetable' && (
           <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">

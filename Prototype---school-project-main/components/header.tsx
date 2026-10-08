@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, X, Search, Bell, BookOpen, LogOut, User, RotateCcw } from 'lucide-react'
+import { Menu, X, Search, BookOpen, LogOut, User, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/context/auth-context'
 import { useSchoolData } from '@/context/school-data-context'
+import NotificationBell from '@/components/notification-bell'
 import { useRouter } from 'next/navigation'
 
 export default function Header() {
@@ -77,11 +78,7 @@ export default function Header() {
             <button className="p-2 hover:bg-blue-700/50 hover:scale-110 rounded-lg transition-all duration-200 hidden sm:flex">
               <Search size={20} className="text-white" />
             </button>
-            <button className="p-2 hover:bg-blue-700/50 hover:scale-110 rounded-lg transition-all duration-200 relative hidden sm:flex">
-              <Bell size={20} className="text-white" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-            </button>
+            <NotificationBell />
             
             {/* User Menu */}
             {user ? (

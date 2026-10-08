@@ -7,6 +7,7 @@ import { useAuth } from '@/context/auth-context'
 import { Users, BookOpen, TrendingUp, Award, AlertCircle, BarChart3, Edit2, Eye, X, Filter, Bell, Plus, Trash2, ArrowLeft, CalendarRange, CalendarCheck2, GraduationCap, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
+import MobileTabs, { type MobileTab } from '@/components/mobile-tabs'
 import { TimetableEntry, subjectColors } from '@/lib/timetable-data'
 import { useSchoolData } from '@/context/school-data-context'
 import { CLASSES, GRADE_STYLES, NOTICE_AUDIENCE_LABELS, NOTICE_CATEGORIES, NoticeAudience, NoticePriority, PASS_PERCENT, ROSTER, SUBJECTS, TimetableKey, examResult, feeLedger, formatINR, homeworkStatus, noticesFor, summarizeAttendance } from '@/lib/school-data'
@@ -17,6 +18,16 @@ import { PaymentSheet } from '@/components/school/fees'
 function PrincipalPortalContent() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
+  const mobileTabs: MobileTab[] = [
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'students', label: 'Students', icon: Users },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck2 },
+    { id: 'results', label: 'Results', icon: GraduationCap },
+    { id: 'fees', label: 'Fee Collection', icon: Wallet },
+    { id: 'departments', label: 'Departments', icon: BookOpen },
+    { id: 'notices', label: 'Notices', icon: Bell },
+    { id: 'timetable', label: 'Timetable', icon: CalendarRange },
+  ]
   const [showNewNotice, setShowNewNotice] = useState(false)
   const { data: shared, addNotice, deleteNotice, updateTimetableSlot } = useSchoolData()
   const emptyNotice = { title: '', content: '', priority: 'medium' as NoticePriority, category: 'general', audience: 'everyone' as NoticeAudience }
@@ -158,42 +169,44 @@ function PrincipalPortalContent() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative py-16 px-4 bg-gradient-to-r from-slate-900 to-blue-900 text-white overflow-hidden">
+      <section className="relative py-8 sm:py-16 px-4 bg-gradient-to-r from-slate-900 to-blue-900 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-10 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-8 right-10 w-80 h-80 bg-slate-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="text-5xl md:text-6xl font-bold mb-3">Principal Dashboard</h1>
-          <p className="text-blue-100 text-xl">Complete school overview and student management</p>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-2 sm:mb-3">Principal Dashboard</h1>
+          <p className="text-blue-100 text-base sm:text-xl">Complete school overview and student management</p>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      <div className="max-w-7xl mx-auto px-4 py-4 sm:py-16">
         {/* Welcome Message */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl border-2 border-blue-200 p-8 mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome, {user?.name}</h2>
-          <p className="text-slate-600 text-lg">Here's an overview of your school's performance and key metrics.</p>
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl border-2 border-blue-200 p-5 sm:p-8 mb-6 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1 sm:mb-2">Welcome, {user?.name}</h2>
+          <p className="text-slate-600 text-sm sm:text-lg">Here's an overview of your school's performance and key metrics.</p>
         </div>
 
         {/* Key Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-14">
           {stats.map((stat, idx) => {
             const Icon = stat.icon
             return (
-              <div key={idx} className={`bg-gradient-to-br ${stat.color} text-white p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2`}>
-                <Icon size={40} className="mb-4 opacity-80" />
-                <div className="text-4xl font-bold mb-2">{stat.value}</div>
-                <div className="text-blue-100 font-semibold">{stat.label}</div>
+              <div key={idx} className={`bg-gradient-to-br ${stat.color} text-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2`}>
+                <Icon size={40} className="mb-2 sm:mb-4 opacity-80 w-7 h-7 sm:w-10 sm:h-10" />
+                <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">{stat.value}</div>
+                <div className="text-blue-100 font-semibold text-sm sm:text-base">{stat.label}</div>
               </div>
             )
           })}
         </div>
 
+        <MobileTabs tabs={mobileTabs} active={activeTab} onChange={setActiveTab} />
+
         {/* Tabs */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
           {/* Tab Buttons */}
-          <div className="flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-2 flex-wrap">
+          <div className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-2 flex-wrap">
             <button
               onClick={() => setActiveTab('overview')}
               className={`flex-1 min-w-fit px-6 py-4 font-bold text-center transition-all duration-300 flex items-center justify-center gap-2 rounded-xl ${

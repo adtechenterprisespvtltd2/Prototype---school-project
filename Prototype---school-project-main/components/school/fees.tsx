@@ -267,7 +267,39 @@ export function PaymentSheet({ receivedBy = 'Accounts Office', readOnly = false 
         {filtered.length === 0 ? (
           <EmptyState icon={<Search size={32} />} title="No students match" />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200">
+          <>
+          {/* Phones: one card per student with a 12-month strip */}
+          <ul className="space-y-2.5 sm:hidden">
+            {filtered.map(({ student, ledger }) => (
+              <li key={student.id}>
+                <button type="button" onClick={() => setDetailId(student.id)} className="w-full rounded-2xl border border-slate-200 bg-white p-3.5 text-left active:bg-slate-50">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-slate-900">{student.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {student.classId} · Roll {student.rollNo}
+                      </p>
+                    </div>
+                    <Badge className={STUDENT_STATUS[ledger.status].className}>{STUDENT_STATUS[ledger.status].label}</Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-12 gap-1">
+                    {ledger.lines.map((l, i) => (
+                      <div key={l.id} className="text-center">
+                        <span className={cn('block h-5 rounded', LINE_STYLES[l.status].cell)} title={`${l.label}: ${LINE_STYLES[l.status].label}`} />
+                        <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">{MONTHS[i][0]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex justify-between text-sm">
+                    <span className="font-semibold text-emerald-700">{formatINR(ledger.paid)} paid</span>
+                    <span className="font-bold text-slate-900">{formatINR(ledger.balance)} due</span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 sm:block">
             <table className="w-full min-w-[980px] text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
@@ -322,6 +354,7 @@ export function PaymentSheet({ receivedBy = 'Accounts Office', readOnly = false 
               </tfoot>
             </table>
           </div>
+          </>
         )}
       </Panel>
 

@@ -88,7 +88,7 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 }
 
 export const inputClass =
-  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100'
+  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 sm:text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100'
 
 export const primaryButton =
   'inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50'

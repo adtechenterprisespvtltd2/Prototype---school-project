@@ -7,6 +7,7 @@ import { useAuth } from '@/context/auth-context'
 import { BookOpen, Clock, CheckCircle, CalendarCheck2, AlertCircle, Download, Award, TrendingUp, Bell, User, Megaphone, ArrowLeft, Printer, GraduationCap, HelpCircle, FileText, ClipboardList, NotebookPen, CalendarRange } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
+import MobileTabs, { type MobileTab } from '@/components/mobile-tabs'
 import { useSchoolData } from '@/context/school-data-context'
 import { formatDate, noticesFor } from '@/lib/school-data'
 import { AttendanceCalendar } from '@/components/school/attendance'
@@ -17,6 +18,18 @@ function StudentPortalContent() {
   const { user } = useAuth()
   const studentId = user?.id || 'STU001'
   const { data } = useSchoolData()
+  const mobileTabs: MobileTab[] = [
+    { id: 'courses', label: 'Courses', icon: BookOpen },
+    { id: 'assignments', label: 'Assignments', icon: Clock },
+    { id: 'grades', label: 'Report Card', icon: CheckCircle },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck2 },
+    { id: 'homework', label: 'Homework', icon: ClipboardList },
+    { id: 'notices', label: 'Notices', icon: Bell },
+    { id: 'questions', label: 'Important Questions', icon: HelpCircle },
+    { id: 'papers', label: 'Question Papers', icon: FileText },
+    { id: 'notes', label: 'Notes', icon: NotebookPen },
+    { id: 'timetable', label: 'Timetable', icon: CalendarRange },
+  ]
   const [activeTab, setActiveTab] = useState('courses')
 
   const notices = noticesFor(data.notices, 'students')
@@ -65,22 +78,24 @@ function StudentPortalContent() {
       <Header />
 
       {/* Hero Banner */}
-      <section className="relative py-16 px-4 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white overflow-hidden">
+      <section className="relative py-8 sm:py-16 px-4 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-10 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-8 right-10 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="text-5xl md:text-6xl font-bold mb-3">Welcome back, {user?.name || 'Student'}</h1>
-          <p className="text-blue-100 text-xl">Track your academic progress and manage your coursework efficiently</p>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-2 sm:mb-3">Welcome back, {user?.name || 'Student'}</h1>
+          <p className="text-blue-100 text-base sm:text-xl">Track your academic progress and manage your coursework efficiently</p>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      <div className="max-w-7xl mx-auto px-4 py-4 sm:py-16">
+        <MobileTabs tabs={mobileTabs} active={activeTab} onChange={setActiveTab} />
+
         {/* Tabs Section */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
           {/* Tab Buttons */}
-          <div className="flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
+          <div className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('courses')}
               className={`flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${

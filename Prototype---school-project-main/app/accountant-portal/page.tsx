@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { FileText, Download, Printer, TrendingUp, Calendar, DollarSign, ArrowLeft, Sheet } from 'lucide-react'
 import Link from 'next/link'
 import { PaymentSheet } from '@/components/school/fees'
+import MobileTabs from '@/components/mobile-tabs'
 import { useSchoolData } from '@/context/school-data-context'
 import { CLASSES, PaymentMethod, ROSTER, feeLedger, findStudent, formatINR } from '@/lib/school-data'
 
@@ -340,10 +341,10 @@ function AccountantPortalContent() {
     <main className="min-h-screen bg-gray-50">
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-7xl mx-auto px-4 py-5 sm:py-8">
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-5 sm:mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900">Accountant Portal</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900">Accountant Portal</h1>
             <p className="text-gray-600 mt-2">Manage student receipts and revenue tracking</p>
           </div>
           <Link href="/" className="flex items-center gap-2 text-blue-600 hover:text-blue-800">
@@ -461,8 +462,18 @@ function AccountantPortalContent() {
           </div>
         ) : (
           <>
+            <MobileTabs
+              tabs={[
+                { id: 'sheet', label: 'Payment Sheet', icon: Sheet },
+                { id: 'receipts', label: 'Receipts & Payments', icon: FileText },
+                { id: 'revenue', label: 'Revenue Report', icon: TrendingUp },
+              ]}
+              active={activeTab}
+              onChange={(id) => setActiveTab(id as 'sheet' | 'receipts' | 'revenue')}
+            />
+
             {/* Tab Navigation */}
-            <div className="bg-white rounded-lg border border-gray-200 mb-6 sticky top-24 z-40">
+            <div className="hidden sm:block bg-white rounded-lg border border-gray-200 mb-6 sticky top-24 z-40">
               <div className="flex overflow-x-auto border-b border-gray-200">
                 <button
                   onClick={() => setActiveTab('sheet')}

@@ -16,16 +16,17 @@ export default function TimetableView({
   // When given, every period in the week table becomes clickable for editing.
   onEditSlot?: (entry: TimetableEntry) => void
 }) {
-  const [activeDay, setActiveDay] = useState(DAYS[0])
+  // Open on today's day (weekends fall back to Monday).
+  const [activeDay, setActiveDay] = useState(() => DAYS[new Date().getDay() - 1] ?? DAYS[0])
 
   const todayClasses = entries.filter((e) => e.day === activeDay)
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 inline-flex items-center gap-3">
+          <h3 className="text-xl sm:text-3xl font-bold text-slate-900 inline-flex items-center gap-3">
             <span className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-2.5 rounded-2xl">
               <CalendarRange size={24} />
             </span>
@@ -33,7 +34,7 @@ export default function TimetableView({
           </h3>
           {subtitle && <p className="text-slate-600 mt-2">{subtitle}</p>}
         </div>
-        <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl">
+        <div className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl">
           <Clock size={16} className="text-blue-600" />
           Academic Year 2025-2026
         </div>
@@ -57,14 +58,19 @@ export default function TimetableView({
       </div>
 
       {/* Classes for selected day */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {onEditSlot && <p className="text-sm text-slate-500 -mt-4">Tap a period to edit it.</p>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {todayClasses.map((cls, idx) => {
           const color = subjectColors[cls.subject] || 'from-slate-500 to-slate-700'
           const isFree = cls.subject === 'Free Period'
           return (
             <div
               key={idx}
-              className={`group rounded-2xl border-2 p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+              role={onEditSlot ? 'button' : undefined}
+              tabIndex={onEditSlot ? 0 : undefined}
+              onClick={onEditSlot ? () => onEditSlot(cls) : undefined}
+              onKeyDown={onEditSlot ? (e) => e.key === 'Enter' && onEditSlot(cls) : undefined}
+              className={`group rounded-2xl border-2 p-4 sm:p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${onEditSlot ? 'cursor-pointer ' : ''}${
                 isFree ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white hover:border-blue-300'
               }`}
             >

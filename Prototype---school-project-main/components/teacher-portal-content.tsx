@@ -23,6 +23,7 @@ MessageCircle,
   CalendarRange,
 } from 'lucide-react'
 import TimetableView from '@/components/timetable-view'
+import MobileTabs from '@/components/mobile-tabs'
 import { useSchoolData } from '@/context/school-data-context'
 import { AttendanceManager } from '@/components/school/attendance'
 import { ResultsManager } from '@/components/school/results'
@@ -194,7 +195,7 @@ function TeacherPortalContent() {
     <main className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-slate-100">
       <Header />
 
-      <section className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-4 py-16 text-white">
+      <section className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-4 py-8 text-white sm:py-16">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute left-10 top-8 h-96 w-96 rounded-full bg-slate-700 blur-3xl" />
           <div className="absolute bottom-0 right-10 h-80 w-80 rounded-full bg-blue-600 blur-3xl" />
@@ -207,22 +208,22 @@ function TeacherPortalContent() {
                 <BellRing size={16} />
                 Teacher Portal
               </p>
-              <h1 className="text-4xl font-bold md:text-6xl">
+              <h1 className="text-3xl font-bold sm:text-4xl md:text-6xl">
                 Welcome, {user?.name || 'Teacher'}
               </h1>
-              <p className="mt-4 max-w-2xl text-lg text-slate-300">
+              <p className="mt-3 max-w-2xl text-base text-slate-300 sm:mt-4 sm:text-lg">
                 Manage your class, keep parents informed, and track every student from one dashboard.
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
               {statCards.map((card) => {
                 const Icon = card.icon
                 return (
-                  <div key={card.label} className="rounded-2xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                    <Icon size={24} className="mb-4 text-cyan-300" />
+                  <div key={card.label} className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur sm:p-5">
+                    <Icon size={22} className="mb-2 text-cyan-300 sm:mb-4" />
                     <p className="text-sm text-slate-300">{card.label}</p>
-                    <p className="text-3xl font-bold">{card.value}</p>
+                    <p className="text-2xl font-bold sm:text-3xl">{card.value}</p>
                   </div>
                 )
               })}
@@ -231,8 +232,9 @@ function TeacherPortalContent() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 py-10">
-<div className="mb-8 flex gap-2 overflow-x-auto rounded-3xl border border-slate-200 bg-white p-2 shadow-xl">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:py-10">
+<MobileTabs tabs={tabs} active={activeTab} onChange={(id) => setActiveTab(id as PortalTab)} />
+<div className="mb-8 hidden gap-2 overflow-x-auto rounded-3xl border border-slate-200 bg-white p-2 shadow-xl sm:flex">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const active = activeTab === tab.id

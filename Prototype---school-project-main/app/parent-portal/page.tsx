@@ -7,6 +7,7 @@ import { useAuth } from '@/context/auth-context'
 import { BookOpen, TrendingUp, AlertCircle, CheckCircle, Clock, CreditCard, AlertTriangle, Bell, X, Megaphone, ShieldCheck, Smartphone, Landmark, ArrowLeft, Check, Loader2, Printer, Download, GraduationCap, CalendarRange, CalendarCheck2, ClipboardList, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
+import MobileTabs, { type MobileTab } from '@/components/mobile-tabs'
 import { useSchoolData } from '@/context/school-data-context'
 import { AttendanceCalendar } from '@/components/school/attendance'
 import { ReportCard } from '@/components/school/results'
@@ -16,6 +17,16 @@ import { MONTHS, examResult, feeLedger, findStudent, noticesFor, summarizeAttend
 
 function ParentPortalContent() {
   const { user } = useAuth()
+  const mobileTabs: MobileTab[] = [
+    { id: 'overview', label: 'Overview', icon: BookOpen },
+    { id: 'reportcard', label: 'Report Card', icon: CheckCircle },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck2 },
+    { id: 'homework', label: 'Homework', icon: ClipboardList },
+    { id: 'messages', label: 'Messages', icon: MessageCircle },
+    { id: 'fees', label: 'Fees', icon: CreditCard },
+    { id: 'notices', label: 'Notices', icon: Bell },
+    { id: 'timetable', label: 'Timetable', icon: CalendarRange },
+  ]
   const [activeTab, setActiveTab] = useState('overview')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentStep, setPaymentStep] = useState<'select' | 'qr' | 'processing' | 'success'>('select')
@@ -93,44 +104,46 @@ function ParentPortalContent() {
       <Header />
 
       {/* Hero Banner */}
-      <section className="relative py-16 px-4 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white overflow-hidden">
+      <section className="relative py-8 sm:py-16 px-4 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-10 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-8 right-10 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="text-5xl md:text-6xl font-bold mb-3">Welcome, {user?.name || 'Parent'}</h1>
-          <p className="text-blue-100 text-xl">Monitor {child.name}&apos;s academic progress and manage fees</p>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-2 sm:mb-3">Welcome, {user?.name || 'Parent'}</h1>
+          <p className="text-blue-100 text-base sm:text-xl">Monitor {child.name}&apos;s academic progress and manage fees</p>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      <div className="max-w-7xl mx-auto px-4 py-4 sm:py-16">
         {/* Child Info Card */}
-        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 mb-12 overflow-hidden relative">
+        <div className="bg-white rounded-3xl shadow-xl sm:shadow-2xl border border-slate-200 p-5 sm:p-8 mb-6 sm:mb-12 overflow-hidden relative">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <div>
-              <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Student Name</p>
-              <p className="text-2xl font-bold text-slate-900">{child.name}</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wide mb-1 sm:mb-2">Student Name</p>
+              <p className="text-lg sm:text-2xl font-bold text-slate-900">{child.name}</p>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Class</p>
-              <p className="text-2xl font-bold text-blue-600">{child.class}</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wide mb-1 sm:mb-2">Class</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-600">{child.class}</p>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Roll No.</p>
-              <p className="text-2xl font-bold text-slate-900">{child.rollNo}</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wide mb-1 sm:mb-2">Roll No.</p>
+              <p className="text-lg sm:text-2xl font-bold text-slate-900">{child.rollNo}</p>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Percentage</p>
-              <p className="text-2xl font-bold text-emerald-600">{child.percentage}%</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wide mb-1 sm:mb-2">Percentage</p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-600">{child.percentage}%</p>
             </div>
           </div>
         </div>
 
+        <MobileTabs tabs={mobileTabs} active={activeTab} onChange={setActiveTab} />
+
         {/* Tabs */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden mb-8">
-          <div className="flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
+          <div className="hidden sm:flex border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 p-2 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
@@ -273,9 +286,9 @@ function ParentPortalContent() {
                 <h3 className="text-3xl font-bold text-slate-900 mb-6">Fees & Payments</h3>
 
                 {/* Fees Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
                   {/* Total Fees */}
-                  <div className="group bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl border-2 border-blue-200">
+                  <div className="group bg-gradient-to-br from-slate-50 to-blue-50 p-5 sm:p-8 rounded-2xl border-2 border-blue-200">
                     <p className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-2">Total Fees</p>
                     <p className="text-4xl font-bold text-slate-900 mb-4">₹{totalFees.toLocaleString()}</p>
                     <div className="w-full bg-slate-300 rounded-full h-3">
@@ -288,14 +301,14 @@ function ParentPortalContent() {
                   </div>
 
                   {/* Paid Fees */}
-                  <div className="group bg-gradient-to-br from-emerald-50 to-emerald-100 p-8 rounded-2xl border-2 border-emerald-200">
+                  <div className="group bg-gradient-to-br from-emerald-50 to-emerald-100 p-5 sm:p-8 rounded-2xl border-2 border-emerald-200">
                     <p className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-2">Paid Fees</p>
                     <p className="text-4xl font-bold text-emerald-600 mb-4">₹{paidFees.toLocaleString()}</p>
                     <CheckCircle size={32} className="text-emerald-600" />
                   </div>
 
                   {/* Pending Fees */}
-                  <div className="group bg-gradient-to-br from-red-50 to-red-100 p-8 rounded-2xl border-2 border-red-200">
+                  <div className="group bg-gradient-to-br from-red-50 to-red-100 p-5 sm:p-8 rounded-2xl border-2 border-red-200">
                     <p className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-2">Pending Fees</p>
                     <p className="text-4xl font-bold text-red-600 mb-4">₹{pendingFees.toLocaleString()}</p>
                     <AlertTriangle size={32} className="text-red-600" />
@@ -330,7 +343,7 @@ function ParentPortalContent() {
                 {/* Payment History */}
                 <div className="mt-12">
                   <h4 className="text-2xl font-bold text-slate-900 mb-6">Payment History</h4>
-                  <div className="space-y-4">
+                  <div className="space-y-2.5 sm:space-y-4">
                     {paymentHistory.map((payment) => (
                       <div 
                         key={payment.id} 
@@ -342,7 +355,7 @@ function ParentPortalContent() {
                             setShowPaymentModal(true)
                           }
                         }}
-                        className={`bg-gradient-to-br from-white to-slate-50 p-5 rounded-2xl border-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all ${
+                        className={`bg-gradient-to-br from-white to-slate-50 p-3.5 sm:p-5 rounded-2xl border-2 flex flex-row justify-between items-center gap-3 sm:gap-4 transition-all ${
                           payment.status === 'Unpaid'
                             ? 'border-red-200 hover:border-purple-300 hover:bg-purple-50/10 cursor-pointer hover:shadow-md'
                             : 'border-slate-200 hover:shadow-sm'
@@ -362,7 +375,7 @@ function ParentPortalContent() {
                             {payment.status === 'Paid' ? ` • Paid on ${payment.date}` : ` • ${payment.date}`}
                           </p>
                         </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-200/60 sm:border-transparent">
+                        <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
                           {payment.status === 'Paid' ? (
                             <>
                               <span className="bg-emerald-100 text-emerald-700 px-3.5 py-1.5 rounded-lg font-bold text-xs sm:text-sm">

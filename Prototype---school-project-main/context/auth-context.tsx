@@ -18,6 +18,8 @@ interface AuthContextType {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string, role: UserRole) => Promise<void>
+  // Prototype: sign in as the demo user of a role, no credentials needed.
+  loginAsRole: (role: UserRole) => Promise<void>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -125,13 +127,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loginAsRole = async (role: UserRole) => {
+    const email = Object.keys(DEMO_USERS[role] || {})[0]
+    if (!email) throw new Error(`No demo user for role ${role}`)
+    await login(email, 'password', role)
+  }
+
   const logout = () => {
     setUser(null)
     localStorage.removeItem('currentUser')
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginAsRole, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )

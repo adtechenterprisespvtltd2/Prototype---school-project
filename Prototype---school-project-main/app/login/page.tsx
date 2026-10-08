@@ -9,7 +9,7 @@ import { BookOpen, AlertCircle, GraduationCap, BookOpenCheck, Users, Briefcase, 
 export default function LoginPage() {
   const [loadingRole, setLoadingRole] = useState<UserRole | null>(null)
   const [error, setError] = useState('')
-  const { login } = useAuth()
+  const { loginAsRole } = useAuth()
   const router = useRouter()
 
   const roles: { value: UserRole; label: string; Icon: any; description: string }[] = [
@@ -20,21 +20,12 @@ export default function LoginPage() {
     { value: 'accountant', label: 'Accountant', Icon: Wallet, description: 'Fees & payment sheet' },
   ]
 
-  // Prototype: no credentials – picking a role signs straight into that role's demo account.
-  const demoEmails: Partial<Record<UserRole, string>> = {
-    student: 'student@school.com',
-    teacher: 'teacher@school.com',
-    parent: 'parent@school.com',
-    principal: 'principal@school.com',
-    accountant: 'accountant@school.com',
-  }
-
   const enterAs = async (role: UserRole) => {
     if (loadingRole) return
     setError('')
     setLoadingRole(role)
     try {
-      await login(demoEmails[role]!, 'password', role)
+      await loginAsRole(role)
       router.push(`/${role}-portal`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')

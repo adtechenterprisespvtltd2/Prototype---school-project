@@ -8,10 +8,13 @@ export default function TimetableView({
   entries,
   title = 'Weekly Class Timetable',
   subtitle,
+  onEditSlot,
 }: {
   entries: TimetableEntry[]
   title?: string
   subtitle?: string
+  // When given, every period in the week table becomes clickable for editing.
+  onEditSlot?: (entry: TimetableEntry) => void
 }) {
   const [activeDay, setActiveDay] = useState(DAYS[0])
 
@@ -94,6 +97,7 @@ export default function TimetableView({
         <div className="bg-gradient-to-r from-slate-900 to-blue-900 text-white px-6 py-4 flex items-center gap-3">
           <BookOpen size={20} className="text-blue-400" />
           <h4 className="font-bold text-lg">Full Week Schedule</h4>
+          {onEditSlot && <span className="ml-auto text-xs font-semibold text-blue-200">Click any period to edit it</span>}
         </div>
         <div className="p-4 sm:p-6 overflow-x-auto">
           <table className="w-full min-w-[800px] border-collapse">
@@ -118,7 +122,19 @@ export default function TimetableView({
                     const isFree = entry?.subject === 'Free Period'
                     return (
                       <td key={i} className="py-2 px-2">
-                        {entry ? (
+                        {entry && onEditSlot ? (
+                          <button
+                            type="button"
+                            onClick={() => onEditSlot(entry)}
+                            title={`Edit ${day} ${entry.period}`}
+                            className={`${isFree ? 'bg-slate-100 text-slate-500' : `bg-gradient-to-r ${color} text-white`} w-full rounded-xl px-2.5 py-2 text-center text-[11px] font-bold leading-tight ring-offset-2 transition hover:ring-2 hover:ring-blue-500`}
+                          >
+                            <span className="block">{entry.subject}</span>
+                            <span className={`block text-[9px] font-semibold mt-0.5 ${isFree ? 'text-slate-400' : 'text-white/80'}`}>
+                              {entry.room}
+                            </span>
+                          </button>
+                        ) : entry ? (
                           <div className={`${isFree ? 'bg-slate-100 text-slate-500' : `bg-gradient-to-r ${color} text-white`} rounded-xl px-2.5 py-2 text-center text-[11px] font-bold leading-tight`}>
                             <span className="block">{entry.subject}</span>
                             <span className={`block text-[9px] font-semibold mt-0.5 ${isFree ? 'text-slate-400' : 'text-white/80'}`}>

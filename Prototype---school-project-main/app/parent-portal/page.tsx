@@ -4,15 +4,15 @@ import { useState } from 'react'
 import Header from '@/components/header'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/context/auth-context'
-import { BookOpen, TrendingUp, AlertCircle, CheckCircle, Clock, CreditCard, AlertTriangle, Bell, X, Megaphone, ShieldCheck, Smartphone, Landmark, ArrowLeft, Check, Loader2, Printer, Download, GraduationCap, CalendarRange, CalendarCheck2, ClipboardList } from 'lucide-react'
+import { BookOpen, TrendingUp, AlertCircle, CheckCircle, Clock, CreditCard, AlertTriangle, Bell, X, Megaphone, ShieldCheck, Smartphone, Landmark, ArrowLeft, Check, Loader2, Printer, Download, GraduationCap, CalendarRange, CalendarCheck2, ClipboardList, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
-import { classTimetable } from '@/lib/timetable-data'
 import { useSchoolData } from '@/context/school-data-context'
 import { AttendanceCalendar } from '@/components/school/attendance'
 import { ReportCard } from '@/components/school/results'
 import { HomeworkBoard } from '@/components/school/homework'
-import { MONTHS, examResult, feeLedger, findStudent, summarizeAttendance } from '@/lib/school-data'
+import { ParentMessages } from '@/components/school/messages'
+import { MONTHS, examResult, feeLedger, findStudent, noticesFor, summarizeAttendance } from '@/lib/school-data'
 
 function ParentPortalContent() {
   const { user } = useAuth()
@@ -40,11 +40,7 @@ function ParentPortalContent() {
         .map((sub) => ({ name: sub.subject, grade: sub.grade!, marks: Math.round(sub.percent!) }))
     : []
 
-  const notices = [
-    { id: 1, title: 'Mid-Term Exam Schedule', content: 'Exams start from March 1st. All students must report 15 mins early.', priority: 'high', date: '2024-02-15', createdBy: 'Principal' },
-    { id: 2, title: 'Lab Session Cancelled', content: 'Lab session on Friday is postponed to next week.', priority: 'medium', date: '2024-02-14', createdBy: 'Dr. Anderson' },
-    { id: 3, title: 'Annual Sports Day', content: 'Sports day on 25th March. Students should wear their house colors.', priority: 'low', date: '2024-02-10', createdBy: 'Sports Dept' },
-  ]
+  const notices = noticesFor(data.notices, 'parents')
 
   const [selectedMonthToPay, setSelectedMonthToPay] = useState<any>(null)
   const [lastTxnId, setLastTxnId] = useState('')
@@ -180,6 +176,17 @@ function ParentPortalContent() {
               Homework
             </button>
             <button
+              onClick={() => setActiveTab('messages')}
+              className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
+                activeTab === 'messages'
+                  ? 'bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <MessageCircle size={16} className="sm:w-5 sm:h-5" />
+              Messages
+            </button>
+            <button
               onClick={() => setActiveTab('fees')}
               className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
                 activeTab === 'fees'
@@ -257,6 +264,8 @@ function ParentPortalContent() {
             {activeTab === 'attendance' && <AttendanceCalendar studentId={childId} viewer="parent" />}
 
             {activeTab === 'homework' && <HomeworkBoard studentId={childId} mode="parent" />}
+
+            {activeTab === 'messages' && <ParentMessages studentId={childId} parentName={childRecord.parentName} />}
 
             {/* Fees Tab */}
             {activeTab === 'fees' && (
@@ -412,7 +421,7 @@ function ParentPortalContent() {
             {/* Timetable Tab */}
             {activeTab === 'timetable' && (
               <TimetableView
-                entries={classTimetable}
+                entries={data.timetables['class-10A']}
                 title="Child's Weekly Timetable"
                 subtitle={`Class ${child.class} • ${child.name} • Academic Year 2025-2026`}
               />

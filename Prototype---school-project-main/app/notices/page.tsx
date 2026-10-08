@@ -4,67 +4,22 @@ import { useState } from 'react'
 import Header from '@/components/header'
 import { Bell, AlertCircle, Info, CheckCircle, Calendar, Star, ArrowRight, Clock, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useSchoolData } from '@/context/school-data-context'
+import { noticesFor } from '@/lib/school-data'
 
 export default function NoticesPage() {
   const [activeFilter, setActiveFilter] = useState('all')
-  const [starred, setStarred] = useState<number[]>([])
+  const [starred, setStarred] = useState<string[]>([])
+  const { data } = useSchoolData()
 
-  const notices = [
-    {
-      id: 1,
-      title: 'School Holidays Announced',
-      content: 'The school will be closed for summer vacations from June 15 to July 31, 2024. Classes will resume on August 1, 2024.',
-      category: 'holiday',
-      date: '2024-02-12',
-      priority: 'high',
-    },
-    {
-      id: 2,
-      title: 'Admission Process Update',
-      content: 'Online admission for the academic year 2024-25 has started. Please visit the admissions page to register and submit required documents.',
-      category: 'admission',
-      date: '2024-02-10',
-      priority: 'high',
-    },
-    {
-      id: 3,
-      title: 'Mid-Term Examination Schedule Released',
-      content: 'Mid-term examinations for all classes will commence from March 1, 2024. Detailed timetable has been uploaded in the academic section.',
-      category: 'academic',
-      date: '2024-02-08',
-      priority: 'medium',
-    },
-    {
-      id: 4,
-      title: 'New Lab Equipment Installed',
-      content: 'The science laboratory has been upgraded with state-of-the-art equipment. Students can now access advanced facilities for their experiments.',
-      category: 'facility',
-      date: '2024-02-05',
-      priority: 'low',
-    },
-    {
-      id: 5,
-      title: 'Parent-Teacher Meeting Scheduled',
-      content: 'PTM has been scheduled for February 24, 2024 from 3 PM to 6 PM. Parents are requested to register on the portal for time slots.',
-      category: 'general',
-      date: '2024-02-03',
-      priority: 'medium',
-    },
-    {
-      id: 6,
-      title: 'Sports Registration Open',
-      content: 'Registration for inter-school sports tournament is now open. Interested students should submit their names to the sports department by February 20.',
-      category: 'sports',
-      date: '2024-02-01',
-      priority: 'low',
-    },
-  ]
+  // Public page: only notices the principal published for everyone.
+  const notices = noticesFor(data.notices, 'everyone').filter((n) => n.audience === 'everyone')
 
   const filteredNotices = activeFilter === 'all' 
     ? notices 
     : notices.filter(n => n.category === activeFilter)
 
-  const toggleStar = (id: number) => {
+  const toggleStar = (id: string) => {
     setStarred(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 

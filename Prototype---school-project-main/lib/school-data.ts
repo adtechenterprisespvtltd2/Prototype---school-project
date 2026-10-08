@@ -1,5 +1,8 @@
-// Shared school records used by every portal (attendance, results, fees, homework).
+// Shared school records used by every portal (attendance, results, fees, homework,
+// notices, study material, messages and timetables).
 // Everything here is plain data + pure helpers; state lives in context/school-data-context.tsx.
+
+import { TimetableEntry, classTimetable, schoolTimetable, teacherTimetable } from './timetable-data'
 
 export type ClassId = '10A' | '10B'
 
@@ -76,6 +79,64 @@ export type Payment = {
   receivedBy: string
 }
 
+export type NoticePriority = 'high' | 'medium' | 'low'
+export type NoticeAudience = 'everyone' | 'students' | 'parents' | 'staff'
+
+export type Notice = {
+  id: string
+  title: string
+  content: string
+  priority: NoticePriority
+  category: string
+  audience: NoticeAudience
+  date: string
+  createdBy: string
+}
+
+export type StudyNote = {
+  id: string
+  title: string
+  subject: string
+  summary: string
+  postedOn: string
+  postedBy: string
+  attachment?: Attachment
+}
+
+export type QuestionSet = {
+  id: string
+  subject: string
+  chapter: string
+  questions: string[]
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  marks: number
+  postedBy: string
+  attachment?: Attachment
+}
+
+export type QuestionPaper = {
+  id: string
+  subject: string
+  exam: string
+  year: string
+  marks: string
+  duration: string
+  postedBy: string
+  attachment?: Attachment
+}
+
+// One conversation per student between their parent and the class teacher.
+export type Message = {
+  id: string
+  studentId: string
+  from: 'teacher' | 'parent'
+  author: string
+  text: string
+  sentAt: string
+}
+
+export type TimetableKey = 'class-10A' | 'teacher' | 'school'
+
 export type SchoolData = {
   version: number
   attendance: AttendanceRegister
@@ -84,9 +145,15 @@ export type SchoolData = {
   homework: Homework[]
   submissions: SubmissionBook
   payments: Payment[]
+  notices: Notice[]
+  notes: StudyNote[]
+  questionSets: QuestionSet[]
+  papers: QuestionPaper[]
+  messages: Message[]
+  timetables: Record<TimetableKey, TimetableEntry[]>
 }
 
-export const DATA_VERSION = 1
+export const DATA_VERSION = 2
 export const ACADEMIC_YEAR = '2026'
 export const PASS_PERCENT = 35
 export const LOW_ATTENDANCE_PERCENT = 75
@@ -133,6 +200,22 @@ export const INSTALLMENTS: Installment[] = MONTHS.map((month, i) => ({
 }))
 
 export const PAYMENT_METHODS: PaymentMethod[] = ['UPI', 'Cash', 'Card', 'Bank Transfer', 'Cheque']
+
+export const NOTICE_CATEGORIES = ['academic', 'admission', 'holiday', 'sports', 'general', 'facility']
+
+export const NOTICE_AUDIENCE_LABELS: Record<NoticeAudience, string> = {
+  everyone: 'Everyone',
+  students: 'Students',
+  parents: 'Parents',
+  staff: 'Staff only',
+}
+
+// Which notices a viewer gets: public pages see "everyone", portals also see their own audience.
+export function noticesFor(notices: Notice[], viewer: NoticeAudience) {
+  return notices
+    .filter((n) => n.audience === 'everyone' || n.audience === viewer || viewer === 'staff')
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
 
 /* ---------------------------------- dates --------------------------------- */
 
@@ -512,5 +595,63 @@ export function buildSeedData(today = todayISO()): SchoolData {
   payments.sort((a, b) => a.date.localeCompare(b.date))
   payments.forEach((p, i) => (p.receiptNo = `RCP-${ACADEMIC_YEAR}-${String(i + 1).padStart(4, '0')}`))
 
-  return { version: DATA_VERSION, attendance, exams, marks, homework, submissions, payments }
+  return { version: DATA_VERSION, attendance, exams, marks, homework, submissions, payments, ...buildContentSeed(today) }
+}
+
+/* Notices, study material, messages and timetables – added in data version 2. */
+export function buildContentSeed(today = todayISO()) {
+  const notices: Notice[] = [
+    { id: 'NOT-1', title: 'Unit Test 2 results coming soon', content: 'Unit Test 2 marks are being entered by subject teachers. Report cards will be published on the portal once every subject is complete.', priority: 'medium', category: 'academic', audience: 'everyone', date: addDays(today, -1), createdBy: 'Principal' },
+    { id: 'NOT-2', title: 'Parent-Teacher Meeting', content: 'PTM for Classes 10A and 10B is on Saturday from 10 AM to 1 PM. Please book a slot with the class teacher through the portal messages.', priority: 'high', category: 'general', audience: 'parents', date: addDays(today, -2), createdBy: 'Principal' },
+    { id: 'NOT-3', title: 'Dussehra holiday', content: 'The school will remain closed on 20 October for Dussehra. Classes resume the next day as per the regular timetable.', priority: 'medium', category: 'holiday', audience: 'everyone', date: addDays(today, -3), createdBy: 'Principal' },
+    { id: 'NOT-4', title: 'Fee reminder – October tuition', content: 'October tuition fees are due on the 10th. Fees can be paid online from the parent portal or at the accounts office.', priority: 'high', category: 'general', audience: 'parents', date: addDays(today, -5), createdBy: 'Accounts Office' },
+    { id: 'NOT-5', title: 'Inter-school sports registration', content: 'Registration for the inter-school athletics meet is open. Interested students should give their names to the sports department by Friday.', priority: 'low', category: 'sports', audience: 'students', date: addDays(today, -6), createdBy: 'Sports Dept' },
+    { id: 'NOT-6', title: 'Science lab upgraded', content: 'The physics and chemistry labs now have new equipment. Lab sessions follow the timetable from next week.', priority: 'low', category: 'facility', audience: 'everyone', date: addDays(today, -9), createdBy: 'Principal' },
+    { id: 'NOT-7', title: 'Admissions open for 2027-28', content: 'Online admission for the next academic year has started. Visit the admissions page to apply and upload documents.', priority: 'medium', category: 'admission', audience: 'everyone', date: addDays(today, -12), createdBy: 'Admissions Office' },
+    { id: 'NOT-8', title: 'Staff meeting on Friday', content: 'All teachers are requested to attend the staff meeting on Friday after P5 in the conference room to review Unit Test 2 marks entry.', priority: 'medium', category: 'general', audience: 'staff', date: addDays(today, -1), createdBy: 'Principal' },
+  ]
+
+  const notes: StudyNote[] = [
+    { id: 'NOTE-1', title: 'Quadratic equations – formula sheet', subject: 'Mathematics', summary: 'All standard forms, the discriminant and nature of roots on one page.', postedOn: addDays(today, -4), postedBy: 'Dr. Sarah Johnson', attachment: { name: 'quadratics-formula-sheet.pdf', size: '410.2 KB' } },
+    { id: 'NOTE-2', title: 'Electricity – handwritten notes', subject: 'Physics', summary: 'Ohm’s law, resistance in series and parallel, power and heating effect.', postedOn: addDays(today, -7), postedBy: 'Dr. James Wilson', attachment: { name: 'electricity-notes.pdf', size: '2.4 MB' } },
+    { id: 'NOTE-3', title: 'Chemical reactions summary', subject: 'Chemistry', summary: 'Types of reactions with one balanced example each.', postedOn: addDays(today, -9), postedBy: 'Dr. Lisa Miller', attachment: { name: 'reactions-summary.pdf', size: '1.1 MB' } },
+    { id: 'NOTE-4', title: '“The road not taken” – analysis', subject: 'English', summary: 'Theme, imagery and line-by-line explanation for the essay homework.', postedOn: addDays(today, -3), postedBy: 'Prof. Michael Brown', attachment: { name: 'road-not-taken.pdf', size: '820.5 KB' } },
+  ]
+
+  const questionSets: QuestionSet[] = [
+    { id: 'QS-1', subject: 'Mathematics', chapter: 'Quadratic Equations', questions: ['Find the nature of roots using the discriminant', 'Solve by completing the square', 'Word problems on speed and area'], difficulty: 'Hard', marks: 8, postedBy: 'Dr. Sarah Johnson' },
+    { id: 'QS-2', subject: 'Physics', chapter: 'Electricity', questions: ['Derive the formula for resistors in parallel', 'State and verify Ohm’s law', 'Numericals on electric power and energy'], difficulty: 'Medium', marks: 6, postedBy: 'Dr. James Wilson' },
+    { id: 'QS-3', subject: 'Chemistry', chapter: 'Chemical Reactions and Equations', questions: ['Balance and classify the given reactions', 'Explain corrosion and rancidity with examples'], difficulty: 'Medium', marks: 5, postedBy: 'Dr. Lisa Miller' },
+    { id: 'QS-4', subject: 'English', chapter: 'Poetry – The Road Not Taken', questions: ['Explain the central metaphor of the poem', 'What does the poet mean by “that has made all the difference”?'], difficulty: 'Easy', marks: 4, postedBy: 'Prof. Michael Brown' },
+  ]
+
+  const papers: QuestionPaper[] = [
+    { id: 'QP-1', subject: 'Mathematics', exam: 'Mid-Term Examination', year: '2026', marks: '100 Marks', duration: '3 Hours', postedBy: 'Dr. Sarah Johnson', attachment: { name: 'maths-midterm-2026.pdf', size: '640.0 KB' } },
+    { id: 'QP-2', subject: 'Physics', exam: 'Final Examination', year: '2025', marks: '100 Marks', duration: '3 Hours', postedBy: 'Dr. James Wilson', attachment: { name: 'physics-final-2025.pdf', size: '702.3 KB' } },
+    { id: 'QP-3', subject: 'Chemistry', exam: 'Mid-Term Examination', year: '2026', marks: '100 Marks', duration: '3 Hours', postedBy: 'Dr. Lisa Miller', attachment: { name: 'chemistry-midterm-2026.pdf', size: '588.9 KB' } },
+    { id: 'QP-4', subject: 'English', exam: 'Unit Test 1', year: '2026', marks: '25 Marks', duration: '1 Hour', postedBy: 'Prof. Michael Brown', attachment: { name: 'english-ut1-2026.pdf', size: '215.4 KB' } },
+  ]
+
+  const at = (daysAgo: number, time: string) => `${addDays(today, -daysAgo)}T${time}`
+  const messages: Message[] = [
+    { id: 'MSG-1', studentId: 'STU001', from: 'teacher', author: 'Dr. Sarah Johnson', text: 'Alex did very well in the Mid-Term – 92.2% and rank 2 in class. Please make sure the October fee is cleared before the PTM.', sentAt: at(3, '15:10:00') },
+    { id: 'MSG-2', studentId: 'STU001', from: 'parent', author: 'Emily Johnson', text: 'Thank you! We will pay this week. Could you suggest extra practice for English?', sentAt: at(3, '19:42:00') },
+    { id: 'MSG-3', studentId: 'STU001', from: 'teacher', author: 'Dr. Sarah Johnson', text: 'Sure – I have shared the English analysis notes on the portal. The essay homework is a good start.', sentAt: at(2, '08:05:00') },
+    { id: 'MSG-4', studentId: 'STU101', from: 'parent', author: 'Anna Smith', text: 'Thanks for the progress update. We will work on homework this week.', sentAt: at(1, '18:20:00') },
+    { id: 'MSG-5', studentId: 'STU102', from: 'parent', author: 'Laura Wilson', text: 'Please share extra practice material for the next test.', sentAt: at(0, '07:45:00') },
+    { id: 'MSG-6', studentId: 'STU106', from: 'teacher', author: 'Dr. Sarah Johnson', text: 'Lisa has missed a few classes recently and has overdue homework. Can we talk at the PTM?', sentAt: at(1, '12:30:00') },
+  ]
+
+  return {
+    notices,
+    notes,
+    questionSets,
+    papers,
+    messages,
+    timetables: {
+      'class-10A': classTimetable.map((e) => ({ ...e })),
+      teacher: teacherTimetable.map((e) => ({ ...e })),
+      school: schoolTimetable.map((e) => ({ ...e })),
+    } as Record<TimetableKey, TimetableEntry[]>,
+  }
 }

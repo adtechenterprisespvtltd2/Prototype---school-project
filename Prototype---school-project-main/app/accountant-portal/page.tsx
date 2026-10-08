@@ -6,9 +6,12 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { FileText, Download, Printer, TrendingUp, Calendar, DollarSign, ArrowLeft, Sheet } from 'lucide-react'
 import Link from 'next/link'
 import { PaymentSheet } from '@/components/school/fees'
+import { useSchoolData } from '@/context/school-data-context'
+import { CLASSES, PaymentMethod, ROSTER, feeLedger, findStudent, formatINR } from '@/lib/school-data'
 
 interface StudentReceipt {
   id: string
+  studentId: string
   name: string
   utrNo: string
   feeAmount: number
@@ -32,10 +35,22 @@ interface RevenueStudentInfo {
 
 function AccountantPortalContent() {
   const [activeTab, setActiveTab] = useState<'sheet' | 'receipts' | 'revenue'>('sheet')
-  const [receipts, setReceipts] = useState<StudentReceipt[]>([])
+  const { data, recordPayment } = useSchoolData()
+  const receipts: StudentReceipt[] = [...data.payments]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+    .map((p) => ({
+      id: p.id,
+      studentId: p.studentId,
+      name: findStudent(p.studentId)?.name ?? p.studentId,
+      utrNo: p.reference,
+      feeAmount: p.amount,
+      date: p.date,
+      paymentMethod: p.method,
+      status: 'Paid',
+    }))
 
   const [formData, setFormData] = useState({
-    name: '',
+    studentId: '',
     utrNo: '',
     feeAmount: '',
     date: new Date().toISOString().split('T')[0],
@@ -45,7 +60,6 @@ function AccountantPortalContent() {
   const [previewReceipt, setPreviewReceipt] = useState<StudentReceipt | null>(null)
   const [hasGeneratedReceipt, setHasGeneratedReceipt] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-  const [revenueStudentForm, setRevenueStudentForm] = useState<RevenueStudentInfo>({ name: '', className: '', rollNo: '' })
   const [selectedRevenueStudent, setSelectedRevenueStudent] = useState<RevenueStudentInfo | null>(null)
 
   const [revenueData] = useState<RevenueData[]>([
@@ -74,7 +88,7 @@ function AccountantPortalContent() {
     const feeAmount = Number(formData.feeAmount)
     const utrNo = formData.utrNo.trim()
 
-    if (!formData.name.trim()) errors.name = 'Enter the student’s full name.'
+    if (!formData.studentId) errors.studentId = 'Select the student.'
     if (!/^[A-Z0-9-]{6,30}$/.test(utrNo)) errors.utrNo = 'Enter a valid transaction ID (6–30 letters, numbers, or hyphens).'
     if (!Number.isFinite(feeAmount) || feeAmount <= 0) errors.feeAmount = 'Enter an amount greater than ₹0.'
     if (!formData.date) errors.date = 'Select the payment date.'
@@ -85,22 +99,40 @@ function AccountantPortalContent() {
       return
     }
 
-    const newReceipt: StudentReceipt = {
-      id: Date.now().toString(),
-      name: formData.name.trim(),
-      utrNo,
-      feeAmount,
+    const balance = feeLedger(data.payments, formData.studentId).balance
+    if (feeAmount > balance) {
+      setFormErrors({ feeAmount: balance === 0 ? 'This student has no fees outstanding.' : `Amount is more than the outstanding balance of ${formatINR(balance)}.` })
+      return
+    }
+
+    // Recorded as a real payment, so it also shows on the payment sheet and the parent's fee tab.
+    const methodMap: Record<string, PaymentMethod> = { 'Bank Transfer': 'Bank Transfer', Online: 'UPI', Cash: 'Cash', Cheque: 'Cheque' }
+    const payment = recordPayment({
+      studentId: formData.studentId,
+      amount: feeAmount,
+      method: methodMap[formData.paymentMethod] ?? 'Bank Transfer',
+      reference: utrNo,
       date: formData.date,
+      receivedBy: 'Mr. Rajesh Kumar',
+    })
+    if (!payment) return
+
+    const newReceipt: StudentReceipt = {
+      id: payment.id,
+      studentId: payment.studentId,
+      name: findStudent(payment.studentId)?.name ?? '',
+      utrNo,
+      feeAmount: payment.amount,
+      date: payment.date,
       paymentMethod: formData.paymentMethod,
       status: 'Paid',
     }
 
-    setReceipts([newReceipt, ...receipts])
     setPreviewReceipt(newReceipt)
     setHasGeneratedReceipt(true)
     setFormErrors({})
     setFormData({
-      name: '',
+      studentId: '',
       utrNo: '',
       feeAmount: '',
       date: new Date().toISOString().split('T')[0],
@@ -295,14 +327,13 @@ function AccountantPortalContent() {
     return { weekly, monthly, yearly }
   }
 
+  const [revenueStudentId, setRevenueStudentId] = useState('')
+
   const submitRevenueStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!revenueStudentForm.name.trim() || !revenueStudentForm.className.trim() || !revenueStudentForm.rollNo.trim()) return
-    setSelectedRevenueStudent({
-      name: revenueStudentForm.name.trim(),
-      className: revenueStudentForm.className.trim(),
-      rollNo: revenueStudentForm.rollNo.trim(),
-    })
+    const student = findStudent(revenueStudentId)
+    if (!student) return
+    setSelectedRevenueStudent({ name: student.name, className: student.classId, rollNo: String(student.rollNo) })
   }
 
   return (
@@ -490,18 +521,31 @@ function AccountantPortalContent() {
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     👤 Student Name *
                   </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
+                  <select
+                    name="studentId"
+                    value={formData.studentId}
                     onChange={handleInputChange}
-                    placeholder="Enter student full name"
-                    autoComplete="name"
-                    aria-invalid={Boolean(formErrors.name)}
-                    aria-describedby={formErrors.name ? 'name-error' : undefined}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
-                  />
-                  {formErrors.name && <p id="name-error" className="mt-2 text-sm text-red-600">{formErrors.name}</p>}
+                    aria-invalid={Boolean(formErrors.studentId)}
+                    aria-describedby={formErrors.studentId ? 'name-error' : undefined}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                  >
+                    <option value="">Select student</option>
+                    {CLASSES.map((c) => (
+                      <optgroup key={c} label={`Class ${c}`}>
+                        {ROSTER.filter((st) => st.classId === c).map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.name} (Roll {st.rollNo})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {formData.studentId && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Outstanding: <span className="font-semibold text-gray-900">{formatINR(feeLedger(data.payments, formData.studentId).balance)}</span>
+                    </p>
+                  )}
+                  {formErrors.studentId && <p id="name-error" className="mt-2 text-sm text-red-600">{formErrors.studentId}</p>}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -688,33 +732,26 @@ function AccountantPortalContent() {
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-green-200 p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-gray-900 text-center">View Student Revenue</h2>
-              <p className="text-center text-sm text-gray-600 mt-2 mb-6">Enter the student's details to view their fee revenue.</p>
+              <p className="text-center text-sm text-gray-600 mt-2 mb-6">Choose a student to see the fees they have paid.</p>
               <form onSubmit={submitRevenueStudent} className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                <input
-                  type="text"
-                  value={revenueStudentForm.name}
-                  onChange={(e) => setRevenueStudentForm((current) => ({ ...current, name: e.target.value }))}
-                  placeholder="Student name"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                <select
+                  value={revenueStudentId}
+                  onChange={(e) => setRevenueStudentId(e.target.value)}
+                  className="md:col-span-2 w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   required
-                />
-                <input
-                  type="text"
-                  value={revenueStudentForm.className}
-                  onChange={(e) => setRevenueStudentForm((current) => ({ ...current, className: e.target.value }))}
-                  placeholder="Class (e.g. 10-A)"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  required
-                />
-                <input
-                  type="text"
-                  value={revenueStudentForm.rollNo}
-                  onChange={(e) => setRevenueStudentForm((current) => ({ ...current, rollNo: e.target.value }))}
-                  placeholder="Roll number"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  required
-                />
-                <button type="submit" className="md:col-span-3 md:w-72 justify-self-center w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 rounded-lg font-bold transition">Show Revenue</button>
+                >
+                  <option value="">Select student</option>
+                  {CLASSES.map((c) => (
+                    <optgroup key={c} label={`Class ${c}`}>
+                      {ROSTER.filter((st) => st.classId === c).map((st) => (
+                        <option key={st.id} value={st.id}>
+                          {st.name} (Roll {st.rollNo})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <button type="submit" className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 rounded-lg font-bold transition">Show Revenue</button>
               </form>
             </div>
 
@@ -722,7 +759,7 @@ function AccountantPortalContent() {
               <div className="bg-white rounded-lg border border-gray-200 p-10 text-center">
                 <TrendingUp size={42} className="mx-auto text-green-600 mb-4" />
                 <h2 className="text-2xl font-bold text-gray-900">No payment data found</h2>
-                <p className="text-gray-600 mt-2">Enter payment details for {selectedRevenueStudent.name} in Receipts & Payments to view their revenue here.</p>
+                <p className="text-gray-600 mt-2">{selectedRevenueStudent.name} has no payments recorded yet. Record one in Receipts & Payments or the Payment Sheet.</p>
               </div>
             ) : (
               <>
@@ -733,12 +770,12 @@ function AccountantPortalContent() {
                 <p className="text-sm mt-1 opacity-90">Class {selectedRevenueStudent.className} · Roll {selectedRevenueStudent.rollNo}</p>
               </div>
               <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-lg">
-                <p className="text-sm opacity-90">Monthly Revenue</p>
-                <p className="text-3xl font-bold mt-2">₹{calculateTotalRevenue().toLocaleString()}</p>
+                <p className="text-sm opacity-90">This Month</p>
+                <p className="text-3xl font-bold mt-2">₹{getStudentRevenue(selectedRevenueStudent.name).monthly.toLocaleString()}</p>
               </div>
               <div className="bg-gradient-to-br from-purple-500 to-pink-600 text-white p-6 rounded-lg">
-                <p className="text-sm opacity-90">Yearly Revenue</p>
-                <p className="text-3xl font-bold mt-2">₹{Math.round(calculateTotalRevenue() / receipts.length).toLocaleString()}</p>
+                <p className="text-sm opacity-90">This Year</p>
+                <p className="text-3xl font-bold mt-2">₹{getStudentRevenue(selectedRevenueStudent.name).yearly.toLocaleString()}</p>
               </div>
             </div>
 

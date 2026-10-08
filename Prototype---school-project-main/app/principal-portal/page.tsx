@@ -7,9 +7,9 @@ import { useAuth } from '@/context/auth-context'
 import { Users, BookOpen, TrendingUp, Award, AlertCircle, BarChart3, Edit2, Eye, X, Filter, Bell, Plus, Trash2, ArrowLeft, CalendarRange, CalendarCheck2, GraduationCap, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
-import { classTimetable, schoolTimetable } from '@/lib/timetable-data'
+import { TimetableEntry, subjectColors } from '@/lib/timetable-data'
 import { useSchoolData } from '@/context/school-data-context'
-import { CLASSES, GRADE_STYLES, PASS_PERCENT, ROSTER, SUBJECTS, examResult, feeLedger, formatINR, homeworkStatus, summarizeAttendance } from '@/lib/school-data'
+import { CLASSES, GRADE_STYLES, NOTICE_AUDIENCE_LABELS, NOTICE_CATEGORIES, NoticeAudience, NoticePriority, PASS_PERCENT, ROSTER, SUBJECTS, TimetableKey, examResult, feeLedger, formatINR, homeworkStatus, noticesFor, summarizeAttendance } from '@/lib/school-data'
 import { AttendanceOverview } from '@/components/school/attendance'
 import { ResultsOverview } from '@/components/school/results'
 import { PaymentSheet } from '@/components/school/fees'
@@ -18,28 +18,46 @@ function PrincipalPortalContent() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [showNewNotice, setShowNewNotice] = useState(false)
-  const [noticeData, setNoticeData] = useState({ title: '', content: '', priority: 'medium' })
-  const [notices, setNotices] = useState([
-    { id: 1, title: 'Mid-Term Exam Schedule', content: 'Exams start from March 1st. All students must report 15 mins early.', priority: 'high', date: '2024-02-15', createdBy: 'Principal' },
-    { id: 2, title: 'Lab Session Cancelled', content: 'Lab session on Friday is postponed to next week.', priority: 'medium', date: '2024-02-14', createdBy: 'Principal' },
-  ])
+  const { data: shared, addNotice, deleteNotice, updateTimetableSlot } = useSchoolData()
+  const emptyNotice = { title: '', content: '', priority: 'medium' as NoticePriority, category: 'general', audience: 'everyone' as NoticeAudience }
+  const [noticeData, setNoticeData] = useState(emptyNotice)
+  const notices = noticesFor(shared.notices, 'staff')
 
   const handleAddNotice = () => {
-    if (noticeData.title && noticeData.content) {
-      const newNotice = {
-        id: notices.length + 1,
-        ...noticeData,
-        date: new Date().toISOString().split('T')[0],
-        createdBy: 'Principal'
-      }
-      setNotices([newNotice, ...notices])
-      setNoticeData({ title: '', content: '', priority: 'medium' })
+    if (noticeData.title.trim() && noticeData.content.trim()) {
+      addNotice({ ...noticeData, title: noticeData.title.trim(), content: noticeData.content.trim(), createdBy: 'Principal' })
+      setNoticeData(emptyNotice)
       setShowNewNotice(false)
     }
   }
 
-  const handleDeleteNotice = (id: number) => {
-    setNotices(notices.filter(n => n.id !== id))
+  const handleDeleteNotice = (id: string) => {
+    if (window.confirm('Delete this notice for everyone?')) deleteNotice(id)
+  }
+
+  // Timetable editing
+  const timetableOptions: { key: TimetableKey; label: string; subtitle: string }[] = [
+    { key: 'school', label: 'School overview', subtitle: 'Weekly schedule overview across all classes' },
+    { key: 'class-10A', label: 'Class 10A', subtitle: 'Seen by Class 10A students and their parents' },
+    { key: 'teacher', label: 'Dr. Sarah Johnson', subtitle: 'Seen by Dr. Sarah Johnson in the teacher portal' },
+  ]
+  const [timetableKey, setTimetableKey] = useState<TimetableKey>('class-10A')
+  const [editingSlot, setEditingSlot] = useState<TimetableEntry | null>(null)
+  const [slotForm, setSlotForm] = useState({ subject: '', teacher: '', room: '' })
+
+  const openSlot = (entry: TimetableEntry) => {
+    setEditingSlot(entry)
+    setSlotForm({ subject: entry.subject, teacher: entry.teacher, room: entry.room })
+  }
+
+  const saveSlot = () => {
+    if (!editingSlot || !slotForm.subject.trim()) return
+    updateTimetableSlot(timetableKey, editingSlot.day, editingSlot.period, {
+      subject: slotForm.subject.trim(),
+      teacher: slotForm.teacher.trim() || '—',
+      room: slotForm.room.trim() || '—',
+    })
+    setEditingSlot(null)
   }
 
   const getPriorityColor = (priority: string) => {
@@ -47,7 +65,7 @@ function PrincipalPortalContent() {
     if (priority === 'medium') return 'from-orange-500 to-orange-600'
     return 'from-blue-500 to-blue-600'
   }
-  const { data } = useSchoolData()
+  const data = shared
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [filterClass, setFilterClass] = useState('All')
 
@@ -75,7 +93,7 @@ function PrincipalPortalContent() {
   const graded = allStudents.filter((s) => s.grade !== '–')
 
   // Distinct teaching staff named in the timetables.
-  const timetableEntries = [...classTimetable, ...schoolTimetable].filter((e) => e.teacher !== '—' && e.teacher !== 'All Faculty')
+  const timetableEntries = [...data.timetables['class-10A'], ...data.timetables.school].filter((e) => e.teacher !== '—' && e.teacher !== 'All Faculty')
   const faculty = new Set(timetableEntries.map((e) => e.teacher))
 
   const stats = [
@@ -112,11 +130,15 @@ function PrincipalPortalContent() {
   const selectedStudent = allStudents.find((s) => s.id === selectedStudentId) || null
 
   useEffect(() => {
-    if (!selectedStudentId) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelectedStudentId(null)
+    if (!selectedStudentId && !editingSlot) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setSelectedStudentId(null)
+      setEditingSlot(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedStudentId])
+  }, [selectedStudentId, editingSlot])
 
   const getGradeColor = (marks: number) => {
     if (marks >= 90) return 'from-emerald-500 to-emerald-600'
@@ -434,17 +456,43 @@ function PrincipalPortalContent() {
                           className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none font-medium"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Priority</label>
-                        <select
-                          value={noticeData.priority}
-                          onChange={(e) => setNoticeData({...noticeData, priority: e.target.value})}
-                          className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none font-medium"
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                        </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Priority</label>
+                          <select
+                            value={noticeData.priority}
+                            onChange={(e) => setNoticeData({...noticeData, priority: e.target.value as NoticePriority})}
+                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none font-medium"
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Category</label>
+                          <select
+                            value={noticeData.category}
+                            onChange={(e) => setNoticeData({...noticeData, category: e.target.value})}
+                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none font-medium capitalize"
+                          >
+                            {NOTICE_CATEGORIES.map((c) => (
+                              <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Show to</label>
+                          <select
+                            value={noticeData.audience}
+                            onChange={(e) => setNoticeData({...noticeData, audience: e.target.value as NoticeAudience})}
+                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none font-medium"
+                          >
+                            {(Object.keys(NOTICE_AUDIENCE_LABELS) as NoticeAudience[]).map((a) => (
+                              <option key={a} value={a}>{NOTICE_AUDIENCE_LABELS[a]}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
                         <button
@@ -457,7 +505,7 @@ function PrincipalPortalContent() {
                         <button
                           onClick={() => {
                             setShowNewNotice(false)
-                            setNoticeData({ title: '', content: '', priority: 'medium' })
+                            setNoticeData(emptyNotice)
                           }}
                           className="flex-1 min-w-0 w-full sm:w-auto bg-slate-300 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-400 transition-all flex items-center justify-center gap-2"
                         >
@@ -480,6 +528,9 @@ function PrincipalPortalContent() {
                               {notice.priority}
                             </span>
                             <span className="text-sm font-semibold text-slate-600">{notice.date}</span>
+                            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+                              {NOTICE_AUDIENCE_LABELS[notice.audience]} · {notice.category}
+                            </span>
                           </div>
                           <h4 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2 break-words">{notice.title}</h4>
                           <p className="text-slate-700 mb-3 leading-relaxed break-words">{notice.content}</p>
@@ -506,11 +557,26 @@ function PrincipalPortalContent() {
             {activeTab === 'fees' && <PaymentSheet readOnly />}
 
             {activeTab === 'timetable' && (
-              <TimetableView
-                entries={schoolTimetable}
-                title="School-wide Timetable"
-                subtitle="Weekly schedule overview across all classes • Academic Year 2025-2026"
-              />
+              <div className="space-y-6">
+                <div className="flex flex-wrap gap-2 rounded-2xl bg-slate-100 p-1 w-fit max-w-full">
+                  {timetableOptions.map((o) => (
+                    <button
+                      key={o.key}
+                      onClick={() => setTimetableKey(o.key)}
+                      className={`rounded-xl px-4 py-2 text-sm font-bold transition ${timetableKey === o.key ? 'bg-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <TimetableView
+                  key={timetableKey}
+                  entries={shared.timetables[timetableKey]}
+                  title={timetableKey === 'school' ? 'School-wide Timetable' : `${timetableOptions.find((o) => o.key === timetableKey)!.label} Timetable`}
+                  subtitle={`${timetableOptions.find((o) => o.key === timetableKey)!.subtitle} • changes appear there instantly`}
+                  onEditSlot={openSlot}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -520,6 +586,71 @@ function PrincipalPortalContent() {
           Back to Home
         </Link>
       </div>
+
+      {/* Timetable slot editor */}
+      {editingSlot && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingSlot(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Edit period</h2>
+                <p className="text-slate-600 text-sm">
+                  {editingSlot.day} · {editingSlot.period} · {editingSlot.time}
+                </p>
+              </div>
+              <button onClick={() => setEditingSlot(null)} className="p-2 hover:bg-slate-100 rounded-lg transition" aria-label="Close">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="space-y-4 mb-6">
+              <label className="block">
+                <span className="block text-sm font-bold text-slate-700 mb-2">Subject</span>
+                <input
+                  list="timetable-subjects"
+                  value={slotForm.subject}
+                  onChange={(e) => setSlotForm({ ...slotForm, subject: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
+                />
+                <datalist id="timetable-subjects">
+                  {Object.keys(subjectColors).map((sub) => (
+                    <option key={sub} value={sub} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="block">
+                <span className="block text-sm font-bold text-slate-700 mb-2">Teacher</span>
+                <input
+                  list="timetable-teachers"
+                  value={slotForm.teacher}
+                  onChange={(e) => setSlotForm({ ...slotForm, teacher: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
+                />
+                <datalist id="timetable-teachers">
+                  {Array.from(faculty).map((t) => (
+                    <option key={t} value={t} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="block">
+                <span className="block text-sm font-bold text-slate-700 mb-2">Room</span>
+                <input
+                  value={slotForm.room}
+                  onChange={(e) => setSlotForm({ ...slotForm, room: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
+                />
+              </label>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setEditingSlot(null)} className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition">
+                Cancel
+              </button>
+              <button onClick={saveSlot} disabled={!slotForm.subject.trim()} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition disabled:opacity-50">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Student profile */}
       {selectedStudent && (

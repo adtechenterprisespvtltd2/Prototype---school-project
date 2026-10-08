@@ -7,7 +7,8 @@ import { useAuth } from '@/context/auth-context'
 import { BookOpen, Clock, CheckCircle, CalendarCheck2, AlertCircle, Download, Award, TrendingUp, Bell, User, Megaphone, ArrowLeft, Printer, GraduationCap, HelpCircle, FileText, ClipboardList, NotebookPen, CalendarRange } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
-import { classTimetable } from '@/lib/timetable-data'
+import { useSchoolData } from '@/context/school-data-context'
+import { formatDate, noticesFor } from '@/lib/school-data'
 import { AttendanceCalendar } from '@/components/school/attendance'
 import { ReportCard } from '@/components/school/results'
 import { HomeworkBoard } from '@/components/school/homework'
@@ -15,13 +16,10 @@ import { HomeworkBoard } from '@/components/school/homework'
 function StudentPortalContent() {
   const { user } = useAuth()
   const studentId = user?.id || 'STU001'
+  const { data } = useSchoolData()
   const [activeTab, setActiveTab] = useState('courses')
 
-  const notices = [
-    { id: 1, title: 'Mid-Term Exam Schedule', content: 'Exams start from March 1st. All students must report 15 mins early.', priority: 'high', date: '2024-02-15', createdBy: 'Principal' },
-    { id: 2, title: 'Lab Session Cancelled', content: 'Lab session on Friday is postponed to next week.', priority: 'medium', date: '2024-02-14', createdBy: 'Dr. Anderson' },
-    { id: 3, title: 'Annual Sports Day', content: 'Sports day on 25th March. Students should wear their house colors.', priority: 'low', date: '2024-02-10', createdBy: 'Sports Dept' },
-  ]
+  const notices = noticesFor(data.notices, 'students')
 
   const courses = [
     { id: 1, name: 'Mathematics - Calculus', instructor: 'Dr. Sarah Johnson', progress: 95, grade: 'A', marks: 96, remarks: 'Excellent analytical and problem-solving skills.' },
@@ -37,25 +35,16 @@ function StudentPortalContent() {
 { id: 4, title: 'Historical Research Paper', course: 'History', dueDate: '2024-02-25', status: 'pending' },
   ]
 
-  const importantQuestions = [
-    { id: 1, subject: 'Mathematics', chapter: 'Calculus - Differentiation', questions: ['Derive the chain rule with examples', 'Solve maxima and minima problems', 'Application of derivatives in real life'], difficulty: 'Hard', marks: 8 },
-    { id: 2, subject: 'Physics', chapter: 'Quantum Mechanics', questions: ['Explain wave-particle duality', 'State and prove Heisenberg uncertainty principle', 'Describe photoelectric effect with equations'], difficulty: 'Hard', marks: 10 },
-    { id: 3, subject: 'Chemistry', chapter: 'Organic Chemistry', questions: ['Explain isomerism types', 'Write mechanisms of substitution reactions', 'Describe functional group identification'], difficulty: 'Medium', marks: 7 },
-    { id: 4, subject: 'English Literature', chapter: 'Romeo & Juliet', questions: ['Analyze the theme of fate vs free will', 'Character sketch of Juliet', 'Discuss the role of the Nurse'], difficulty: 'Medium', marks: 6 },
-  ]
+  const importantQuestions = data.questionSets
+  const questionPapers = data.papers
 
-  const questionPapers = [
-    { id: 1, subject: 'Mathematics', exam: 'Mid-Term Exam', year: '2024', marks: '100 Marks', duration: '3 Hours' },
-    { id: 2, subject: 'Physics', exam: 'Final Exam', year: '2023', marks: '100 Marks', duration: '3 Hours' },
-    { id: 3, subject: 'Chemistry', exam: 'Mid-Term Exam', year: '2024', marks: '80 Marks', duration: '2.5 Hours' },
-    { id: 4, subject: 'English Literature', exam: 'Unit Test', year: '2024', marks: '40 Marks', duration: '1.5 Hours' },
-  ]
-
-  const notes = [
-    { id: 1, subject: 'Physics', title: 'Handwritten Notes - Quantum Mechanics', date: '2024-02-10', size: '2.4 MB' },
-    { id: 2, subject: 'English Literature', title: 'Summary Notes - Romeo & Juliet', date: '2024-02-08', size: '1.8 MB' },
-    { id: 3, subject: 'Chemistry', title: 'Organic Chemistry Reaction Guide', date: '2024-02-09', size: '3.1 MB' },
-  ]
+  const notes = data.notes.map((n) => ({
+    id: n.id,
+    subject: n.subject,
+    title: n.title,
+    date: formatDate(n.postedOn),
+    size: n.attachment?.size ?? 'Text only',
+  }))
 
   const gradeColors: Record<string, string> = {
     'A+': 'from-emerald-500 to-emerald-600',
@@ -382,7 +371,7 @@ function StudentPortalContent() {
 {/* Timetable Tab */}
             {activeTab === 'timetable' && (
               <TimetableView
-                entries={classTimetable}
+                entries={data.timetables['class-10A']}
                 title="My Weekly Timetable"
                 subtitle="Class 10A • Academic Year 2025-2026"
               />

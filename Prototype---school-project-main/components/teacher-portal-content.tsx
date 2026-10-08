@@ -23,11 +23,11 @@ MessageCircle,
   CalendarRange,
 } from 'lucide-react'
 import TimetableView from '@/components/timetable-view'
-import { teacherTimetable } from '@/lib/timetable-data'
 import { useSchoolData } from '@/context/school-data-context'
 import { AttendanceManager } from '@/components/school/attendance'
 import { ResultsManager } from '@/components/school/results'
 import { HomeworkManager } from '@/components/school/homework'
+import { TeacherInbox } from '@/components/school/messages'
 import { ClassId, examResult, studentsIn, summarizeAttendance, todayISO } from '@/lib/school-data'
 
 type PortalTab =
@@ -46,41 +46,6 @@ type PortalTab =
 type Attachment = {
   name: string
   size: string
-}
-
-type NoteItem = {
-  id: number
-  title: string
-  subject: string
-  postedOn: string
-  attachment?: Attachment
-}
-
-type QuestionItem = {
-  id: number
-  subject: string
-  chapter: string
-  questions: string[]
-  difficulty: string
-  marks: number
-  attachment?: Attachment
-}
-
-type PaperItem = {
-  id: number
-  subject: string
-  exam: string
-  year: string
-  marks: string
-  duration: string
-  attachment?: Attachment
-}
-
-type MessageItem = {
-  id: number
-  parent: string
-  message: string
-  time: string
 }
 
 function AttachmentPicker({
@@ -129,30 +94,9 @@ function TeacherPortalContent() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<PortalTab>('dashboard')
 
-  const [notes, setNotes] = useState<NoteItem[]>([
-    { id: 1, title: 'Chapter 4 revision notes', subject: 'Mathematics', postedOn: '2026-08-04' },
-    { id: 2, title: 'History worksheet', subject: 'Social Studies', postedOn: '2026-08-03' },
-  ])
-
-  const [questions, setQuestions] = useState<QuestionItem[]>([
-    { id: 1, subject: 'Mathematics', chapter: 'Calculus - Differentiation', questions: ['Derive the chain rule', 'Solve maxima and minima problems'], difficulty: 'Hard', marks: 8 },
-    { id: 2, subject: 'Physics', chapter: 'Quantum Mechanics', questions: ['Explain wave-particle duality', 'State Heisenberg uncertainty principle'], difficulty: 'Hard', marks: 10 },
-  ])
-
-  const [papers, setPapers] = useState<PaperItem[]>([
-    { id: 1, subject: 'Mathematics', exam: 'Mid-Term Exam', year: '2024', marks: '100 Marks', duration: '3 Hours' },
-    { id: 2, subject: 'Physics', exam: 'Final Exam', year: '2023', marks: '100 Marks', duration: '3 Hours' },
-  ])
-
-  const [messages, setMessages] = useState<MessageItem[]>([
-    { id: 1, parent: 'Anna Smith', message: 'Thanks for the progress update. We will work on homework this week.', time: '10 mins ago' },
-    { id: 2, parent: 'Laura Wilson', message: 'Please share extra practice material for the next test.', time: '1 hour ago' },
-  ])
-
   const [noteForm, setNoteForm] = useState({ title: '', subject: '', summary: '' })
   const [questionForm, setQuestionForm] = useState({ subject: '', chapter: '', questions: '', difficulty: 'Medium', marks: '' })
   const [paperForm, setPaperForm] = useState({ subject: '', exam: '', year: '', marks: '', duration: '' })
-  const [messageForm, setMessageForm] = useState({ parent: '', message: '' })
 
   const [noteAttachment, setNoteAttachment] = useState<Attachment | null>(null)
   const [questionAttachment, setQuestionAttachment] = useState<Attachment | null>(null)
@@ -164,7 +108,11 @@ function TeacherPortalContent() {
     return { name: file.name, size: `${(file.size / 1024).toFixed(1)} KB` }
   }
 
-  const { data: schoolData } = useSchoolData()
+  const { data: schoolData, addNote, addQuestionSet, addPaper } = useSchoolData()
+  const notes = schoolData.notes
+  const questions = schoolData.questionSets
+  const papers = schoolData.papers
+  const teacherName = user?.name || 'Class Teacher'
   const homeClass: ClassId = user?.classId === 'CLASS-10B' ? '10B' : '10A'
   const todayRegister = schoolData.attendance[todayISO()] || {}
   const latestExam = [...schoolData.exams].filter((e) => e.published && schoolData.marks[e.id]).sort((a, b) => b.date.localeCompare(a.date))[0]
@@ -208,72 +156,31 @@ function TeacherPortalContent() {
 
   const handleNoteSubmit = () => {
     if (!noteForm.title || !noteForm.subject || !noteForm.summary) return
-
-    setNotes((currentNotes) => [
-      {
-        id: currentNotes.length + 1,
-        title: noteForm.title,
-        subject: noteForm.subject,
-        postedOn: new Date().toISOString().split('T')[0],
-        attachment: noteAttachment || undefined,
-      },
-      ...currentNotes,
-    ])
+    addNote({ title: noteForm.title, subject: noteForm.subject, summary: noteForm.summary, postedBy: teacherName, attachment: noteAttachment || undefined })
     setNoteForm({ title: '', subject: '', summary: '' })
     setNoteAttachment(null)
   }
 
   const handleQuestionSubmit = () => {
     if (!questionForm.subject || !questionForm.chapter || !questionForm.questions || !questionForm.marks) return
-
-    setQuestions((currentQuestions) => [
-      {
-        id: currentQuestions.length + 1,
-        subject: questionForm.subject,
-        chapter: questionForm.chapter,
-        questions: questionForm.questions.split('\n').map((q) => q.trim()).filter(Boolean),
-        difficulty: questionForm.difficulty,
-        marks: Number(questionForm.marks),
-        attachment: questionAttachment || undefined,
-      },
-      ...currentQuestions,
-    ])
+    addQuestionSet({
+      subject: questionForm.subject,
+      chapter: questionForm.chapter,
+      questions: questionForm.questions.split('\n').map((q) => q.trim()).filter(Boolean),
+      difficulty: questionForm.difficulty as 'Easy' | 'Medium' | 'Hard',
+      marks: Number(questionForm.marks),
+      postedBy: teacherName,
+      attachment: questionAttachment || undefined,
+    })
     setQuestionForm({ subject: '', chapter: '', questions: '', difficulty: 'Medium', marks: '' })
     setQuestionAttachment(null)
   }
 
   const handlePaperSubmit = () => {
     if (!paperForm.subject || !paperForm.exam || !paperForm.year || !paperForm.marks || !paperForm.duration) return
-
-    setPapers((currentPapers) => [
-      {
-        id: currentPapers.length + 1,
-        subject: paperForm.subject,
-        exam: paperForm.exam,
-        year: paperForm.year,
-        marks: paperForm.marks,
-        duration: paperForm.duration,
-        attachment: paperAttachment || undefined,
-      },
-      ...currentPapers,
-    ])
+    addPaper({ ...paperForm, postedBy: teacherName, attachment: paperAttachment || undefined })
     setPaperForm({ subject: '', exam: '', year: '', marks: '', duration: '' })
     setPaperAttachment(null)
-  }
-
-  const handleMessageSubmit = () => {
-    if (!messageForm.parent || !messageForm.message) return
-
-    setMessages((currentMessages) => [
-      {
-        id: currentMessages.length + 1,
-        parent: messageForm.parent,
-        message: messageForm.message,
-        time: 'Just now',
-      },
-      ...currentMessages,
-    ])
-    setMessageForm({ parent: '', message: '' })
   }
 
   const statCards = [
@@ -716,57 +623,12 @@ function TeacherPortalContent() {
           </section>
         )}
 
-        {activeTab === 'communication' && (
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Parent Communication</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Send a message to parents</h2>
-
-              <div className="mt-6 space-y-4">
-                <input
-                  value={messageForm.parent}
-                  onChange={(e) => setMessageForm({ ...messageForm, parent: e.target.value })}
-                  placeholder="Parent name"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <textarea
-                  value={messageForm.message}
-                  onChange={(e) => setMessageForm({ ...messageForm, message: e.target.value })}
-                  placeholder="Write your update"
-                  rows={5}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <button
-                  onClick={handleMessageSubmit}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
-                >
-                  <Send size={18} />
-                  Send Message
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Recent conversations</p>
-              <div className="mt-6 space-y-4">
-                {messages.map((message) => (
-                  <article key={message.id} className="rounded-2xl bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-bold text-slate-900">{message.parent}</p>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{message.time}</p>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600">{message.message}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        {activeTab === 'communication' && <TeacherInbox teacherName={teacherName} classId={homeClass} />}
 
         {activeTab === 'timetable' && (
           <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
             <TimetableView
-              entries={teacherTimetable}
+              entries={schoolData.timetables.teacher}
               title="My Teaching Schedule"
               subtitle="Your weekly classes, laboratories and free periods • Academic Year 2025-2026"
             />

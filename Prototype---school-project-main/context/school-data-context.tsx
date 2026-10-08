@@ -10,11 +10,19 @@ import {
   Homework,
   Payment,
   PaymentMethod,
+  Message,
+  Notice,
+  QuestionPaper,
+  QuestionSet,
   SchoolData,
+  StudyNote,
+  TimetableKey,
   allocatePayment,
+  buildContentSeed,
   buildSeedData,
   todayISO,
 } from '@/lib/school-data'
+import { TimetableEntry } from '@/lib/timetable-data'
 
 const STORAGE_KEY = 'edupro-school-data'
 
@@ -36,6 +44,18 @@ interface SchoolDataContextType {
   reviewSubmission: (homeworkId: string, studentId: string, score: number, feedback: string) => void
   // fees
   recordPayment: (p: { studentId: string; amount: number; method: PaymentMethod; reference: string; date?: string; installmentIds?: string[]; receivedBy: string }) => Payment | null
+  // notices
+  addNotice: (n: Omit<Notice, 'id' | 'date'>) => void
+  deleteNotice: (id: string) => void
+  // study material
+  addNote: (n: Omit<StudyNote, 'id' | 'postedOn'>) => void
+  addQuestionSet: (q: Omit<QuestionSet, 'id'>) => void
+  addPaper: (p: Omit<QuestionPaper, 'id'>) => void
+  deleteMaterial: (kind: 'notes' | 'questionSets' | 'papers', id: string) => void
+  // messages
+  sendMessage: (m: Omit<Message, 'id' | 'sentAt'>) => void
+  // timetables
+  updateTimetableSlot: (key: TimetableKey, day: string, period: string, patch: Partial<Pick<TimetableEntry, 'subject' | 'teacher' | 'room'>>) => void
   resetDemoData: () => void
 }
 
@@ -46,7 +66,10 @@ function loadStored(): SchoolData | null {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as SchoolData
-    return parsed.version === DATA_VERSION ? parsed : null
+    if (parsed.version === DATA_VERSION) return parsed
+    // Version 1 had no notices, material, messages or timetables: keep its records and add those.
+    if (parsed.version === 1) return { ...buildContentSeed(), ...parsed, version: DATA_VERSION }
+    return null
   } catch {
     return null
   }
@@ -183,6 +206,44 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
     return payment
   }, [])
 
+  const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+
+  const addNotice = useCallback((n: Omit<Notice, 'id' | 'date'>) => {
+    setData((d) => ({ ...d, notices: [{ ...n, id: newId('NOT'), date: todayISO() }, ...d.notices] }))
+  }, [])
+
+  const deleteNotice = useCallback((id: string) => {
+    setData((d) => ({ ...d, notices: d.notices.filter((n) => n.id !== id) }))
+  }, [])
+
+  const addNote = useCallback((n: Omit<StudyNote, 'id' | 'postedOn'>) => {
+    setData((d) => ({ ...d, notes: [{ ...n, id: newId('NOTE'), postedOn: todayISO() }, ...d.notes] }))
+  }, [])
+
+  const addQuestionSet = useCallback((q: Omit<QuestionSet, 'id'>) => {
+    setData((d) => ({ ...d, questionSets: [{ ...q, id: newId('QS') }, ...d.questionSets] }))
+  }, [])
+
+  const addPaper = useCallback((p: Omit<QuestionPaper, 'id'>) => {
+    setData((d) => ({ ...d, papers: [{ ...p, id: newId('QP') }, ...d.papers] }))
+  }, [])
+
+  const deleteMaterial = useCallback((kind: 'notes' | 'questionSets' | 'papers', id: string) => {
+    setData((d) => ({ ...d, [kind]: (d[kind] as { id: string }[]).filter((x) => x.id !== id) }))
+  }, [])
+
+  const sendMessage = useCallback((m: Omit<Message, 'id' | 'sentAt'>) => {
+    const sentAt = `${todayISO()}T${new Date().toTimeString().slice(0, 8)}`
+    setData((d) => ({ ...d, messages: [...d.messages, { ...m, id: newId('MSG'), sentAt }] }))
+  }, [])
+
+  const updateTimetableSlot = useCallback((key: TimetableKey, day: string, period: string, patch: Partial<Pick<TimetableEntry, 'subject' | 'teacher' | 'room'>>) => {
+    setData((d) => ({
+      ...d,
+      timetables: { ...d.timetables, [key]: d.timetables[key].map((e) => (e.day === day && e.period === period ? { ...e, ...patch } : e)) },
+    }))
+  }, [])
+
   const resetDemoData = useCallback(() => {
     setData(buildSeedData())
   }, [])
@@ -200,9 +261,17 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
       submitHomework,
       reviewSubmission,
       recordPayment,
+      addNotice,
+      deleteNotice,
+      addNote,
+      addQuestionSet,
+      addPaper,
+      deleteMaterial,
+      sendMessage,
+      updateTimetableSlot,
       resetDemoData,
     }),
-    [data, setAttendance, setAttendanceBulk, setMark, setExamPublished, addExam, addHomework, deleteHomework, submitHomework, reviewSubmission, recordPayment, resetDemoData]
+    [data, setAttendance, setAttendanceBulk, setMark, setExamPublished, addExam, addHomework, deleteHomework, submitHomework, reviewSubmission, recordPayment, addNotice, deleteNotice, addNote, addQuestionSet, addPaper, deleteMaterial, sendMessage, updateTimetableSlot, resetDemoData]
   )
 
   return <SchoolDataContext.Provider value={value}>{children}</SchoolDataContext.Provider>

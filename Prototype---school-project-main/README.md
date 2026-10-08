@@ -38,7 +38,7 @@ Each portal only opens for its own role.
 - **Principal:** school average, pass rate, subject averages, merit list (downloadable).
 
 ### Payment sheet (fees)
-- **Accountant:** spreadsheet of every student's 12 monthly fees (₹5,000 due on the 10th) showing paid / part paid / overdue / upcoming. Record a payment, see which months it covers, print a receipt, send reminders, export to CSV.
+- **Accountant:** spreadsheet of every student's 12 monthly fees (₹5,000 due on the 10th) showing paid / part paid / overdue / upcoming. Record a payment, see which months it covers, print a receipt, send reminders, export to CSV. The Receipts & Payments and Revenue Report tabs use the same student list and payments.
 - **Parent:** Fees tab with online payment — a payment appears on the accountant's sheet immediately.
 - **Principal:** the same sheet, view-only.
 
@@ -47,8 +47,24 @@ Each portal only opens for its own role.
 - **Student:** submit an answer and/or file, see due dates and teacher feedback.
 - **Parent:** follow the child's homework and scores.
 
+### Notices
+- **Principal:** posts notices with priority, category and audience (everyone, students, parents or staff only), and can delete them.
+- **Students, parents and the public Notices page** show the notices meant for them. Staff-only notices stay inside the principal portal.
+
+### Notes, important questions and question papers
+- **Teacher:** uploads study notes, chapter-wise important questions and past papers.
+- **Student:** sees them straight away in the matching tabs.
+
+### Parent–teacher messages
+- **Teacher:** inbox with one conversation per parent in the class; a red dot marks parents waiting for a reply.
+- **Parent:** Messages tab to chat with the class teacher.
+
+### Timetables
+- **Principal:** edits any period (subject, teacher, room) of the Class 10A, teacher or school timetable.
+- **Students, parents and the teacher** see the change in their timetable immediately.
+
 ### Also included
-Timetables, notices, notes, important questions, question papers, parent messaging, and the accountant's receipt generator and revenue report.
+Events, admissions, academics and about pages, and the principal's departments view.
 
 ## About the data
 

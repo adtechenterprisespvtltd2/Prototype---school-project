@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from '@/components/header'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/context/auth-context'
-import { Users, BookOpen, TrendingUp, Award, AlertCircle, BarChart3, Edit2, Save, X, Filter, Bell, Plus, Trash2, ArrowLeft, CalendarRange } from 'lucide-react'
+import { Users, BookOpen, TrendingUp, Award, AlertCircle, BarChart3, Edit2, Eye, X, Filter, Bell, Plus, Trash2, ArrowLeft, CalendarRange, CalendarCheck2, GraduationCap, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
-import { schoolTimetable } from '@/lib/timetable-data'
+import { classTimetable, schoolTimetable } from '@/lib/timetable-data'
+import { useSchoolData } from '@/context/school-data-context'
+import { CLASSES, GRADE_STYLES, PASS_PERCENT, ROSTER, SUBJECTS, examResult, feeLedger, formatINR, homeworkStatus, summarizeAttendance } from '@/lib/school-data'
+import { AttendanceOverview } from '@/components/school/attendance'
+import { ResultsOverview } from '@/components/school/results'
+import { PaymentSheet } from '@/components/school/fees'
 
 function PrincipalPortalContent() {
   const { user } = useAuth()
@@ -18,7 +23,6 @@ function PrincipalPortalContent() {
     { id: 1, title: 'Mid-Term Exam Schedule', content: 'Exams start from March 1st. All students must report 15 mins early.', priority: 'high', date: '2024-02-15', createdBy: 'Principal' },
     { id: 2, title: 'Lab Session Cancelled', content: 'Lab session on Friday is postponed to next week.', priority: 'medium', date: '2024-02-14', createdBy: 'Principal' },
   ])
-  const [showEditModal, setShowEditModal] = useState(false)
 
   const handleAddNotice = () => {
     if (noticeData.title && noticeData.content) {
@@ -43,78 +47,88 @@ function PrincipalPortalContent() {
     if (priority === 'medium') return 'from-orange-500 to-orange-600'
     return 'from-blue-500 to-blue-600'
   }
-  const [selectedStudent, setSelectedStudent] = useState<any>(null)
-  const [editData, setEditData] = useState({ marks: 0, attendance: 0 })
+  const { data } = useSchoolData()
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [filterClass, setFilterClass] = useState('All')
 
-  const [allStudents, setAllStudents] = useState([
-    // Class 10A
-    { id: 1, name: 'John Smith', class: '10A', marks: 95, attendance: 94, status: 'Active' },
-    { id: 2, name: 'Emma Wilson', class: '10A', marks: 98, attendance: 98, status: 'Active' },
-    { id: 3, name: 'Michael Brown', class: '10A', marks: 95, attendance: 88, status: 'Active' },
-    // Class 10B
-    { id: 4, name: 'Sarah Davis', class: '10B', marks: 94, attendance: 92, status: 'Active' },
-    { id: 5, name: 'James Miller', class: '10B', marks: 96, attendance: 96, status: 'Active' },
-    { id: 6, name: 'Lisa Anderson', class: '10B', marks: 95, attendance: 90, status: 'Active' },
-    // Class 11A
-    { id: 7, name: 'David Taylor', class: '11A', marks: 96, attendance: 95, status: 'Active' },
-    { id: 8, name: 'Sophie Martin', class: '11A', marks: 98, attendance: 99, status: 'Active' },
-    // Class 11B
-    { id: 9, name: 'Oliver Johnson', class: '11B', marks: 94, attendance: 85, status: 'Active' },
-    { id: 10, name: 'Ava Thompson', class: '11B', marks: 96, attendance: 91, status: 'Active' },
-  ])
+  // Latest published exam drives every marks-based figure on this page.
+  const latestExam = [...data.exams].filter((e) => e.published && data.marks[e.id]).sort((a, b) => b.date.localeCompare(a.date))[0]
+
+  const allStudents = ROSTER.map((s) => {
+    const result = latestExam ? examResult(data.marks, latestExam, s.id) : null
+    const fees = feeLedger(data.payments, s.id)
+    const homework = data.homework.filter((h) => h.classId === s.classId)
+    const handedIn = homework.filter((h) => !['pending', 'overdue'].includes(homeworkStatus(h, data.submissions[h.id]?.[s.id]))).length
+    return {
+      ...s,
+      class: s.classId,
+      marks: result?.percent ?? 0,
+      grade: result && result.maxTotal ? result.grade : '–',
+      passed: result?.passed ?? false,
+      attendance: summarizeAttendance(data.attendance, s.id).percent,
+      fees,
+      homeworkDone: homework.length ? Math.round((handedIn / homework.length) * 100) : 100,
+    }
+  })
+
+  const average = (values: number[]) => (values.length ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10 : 0)
+  const graded = allStudents.filter((s) => s.grade !== '–')
+
+  // Distinct teaching staff named in the timetables.
+  const timetableEntries = [...classTimetable, ...schoolTimetable].filter((e) => e.teacher !== '—' && e.teacher !== 'All Faculty')
+  const faculty = new Set(timetableEntries.map((e) => e.teacher))
 
   const stats = [
     { label: 'Total Students', value: allStudents.length, icon: Users, color: 'from-blue-500 to-blue-600' },
-    { label: 'Faculty Members', value: '125+', icon: BookOpen, color: 'from-purple-500 to-purple-600' },
-    { label: 'Pass Rate', value: '98%', icon: Award, color: 'from-emerald-500 to-emerald-600' },
-    { label: 'Average Percentage', value: '95.2%', icon: TrendingUp, color: 'from-orange-500 to-orange-600' },
+    { label: 'Faculty Members', value: faculty.size, icon: BookOpen, color: 'from-purple-500 to-purple-600' },
+    { label: 'Pass Rate', value: graded.length ? `${Math.round((graded.filter((s) => s.passed).length / graded.length) * 100)}%` : '–', icon: Award, color: 'from-emerald-500 to-emerald-600' },
+    { label: 'Average Percentage', value: graded.length ? `${average(graded.map((s) => s.marks))}%` : '–', icon: TrendingUp, color: 'from-orange-500 to-orange-600' },
   ]
 
-  const departments = [
-    { name: 'Science', students: 420, teachers: 32, passRate: 96 },
-    { name: 'Mathematics', students: 380, teachers: 28, passRate: 94 },
-    { name: 'English', students: 350, teachers: 25, passRate: 97 },
-    { name: 'History', students: 300, teachers: 22, passRate: 95 },
-    { name: 'Commerce', students: 250, teachers: 18, passRate: 93 },
-    { name: 'Arts', students: 200, teachers: 15, passRate: 92 },
-  ]
-
-  const classData = [
-    { class: '10A', students: 45, avgPercentage: 96, attendance: 94 },
-    { class: '10B', students: 42, avgPercentage: 95, attendance: 92 },
-    { class: '10C', students: 48, avgPercentage: 93, attendance: 90 },
-    { class: '11A', students: 40, avgPercentage: 97, attendance: 95 },
-    { class: '11B', students: 43, avgPercentage: 95, attendance: 93 },
-  ]
-
-  const filteredStudents = filterClass === 'All' 
-    ? allStudents 
-    : allStudents.filter(s => s.class === filterClass)
-
-  const handleEditStudent = (student: typeof allStudents[0]) => {
-    setSelectedStudent(student)
-    setEditData({ marks: student.marks, attendance: student.attendance })
-    setShowEditModal(true)
-  }
-
-  const handleSaveStudent = () => {
-    if (selectedStudent) {
-      setAllStudents(allStudents.map(s =>
-        s.id === selectedStudent.id
-          ? { ...s, marks: editData.marks, attendance: editData.attendance }
-          : s
-      ))
-      setShowEditModal(false)
-      setSelectedStudent(null)
+  // One department per subject: teachers from the timetable, pass rate from the latest exam.
+  const departments = SUBJECTS.map((subject) => {
+    const teachers = new Set(timetableEntries.filter((e) => e.subject.startsWith(subject)).map((e) => e.teacher))
+    const scores = latestExam ? Object.values(data.marks[latestExam.id]?.[subject] || {}).map((m) => (m / latestExam.maxMarks) * 100) : []
+    return {
+      name: subject,
+      students: allStudents.length,
+      teachers: teachers.size || 1,
+      passRate: scores.length ? Math.round((scores.filter((v) => v >= PASS_PERCENT).length / scores.length) * 100) : 0,
+      average: average(scores),
     }
-  }
+  })
+
+  const classData = CLASSES.map((c) => {
+    const members = allStudents.filter((s) => s.classId === c)
+    return {
+      class: `Class ${c}`,
+      students: members.length,
+      avgPercentage: average(members.filter((s) => s.grade !== '–').map((s) => s.marks)),
+      attendance: average(members.map((s) => s.attendance)),
+    }
+  })
+
+  const filteredStudents = filterClass === 'All' ? allStudents : allStudents.filter((s) => s.classId === filterClass)
+  const selectedStudent = allStudents.find((s) => s.id === selectedStudentId) || null
+
+  useEffect(() => {
+    if (!selectedStudentId) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelectedStudentId(null)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedStudentId])
 
   const getGradeColor = (marks: number) => {
     if (marks >= 90) return 'from-emerald-500 to-emerald-600'
     if (marks >= 80) return 'from-blue-500 to-blue-600'
     if (marks >= 70) return 'from-yellow-500 to-yellow-600'
     return 'from-red-500 to-red-600'
+  }
+
+  const feeBadge = {
+    cleared: { label: 'Fees cleared', className: 'from-emerald-500 to-emerald-600' },
+    'on-track': { label: 'Fees on track', className: 'from-blue-500 to-blue-600' },
+    overdue: { label: 'Fees overdue', className: 'from-rose-500 to-rose-600' },
   }
 
   return (
@@ -179,6 +193,39 @@ function PrincipalPortalContent() {
             >
               <Users size={20} />
               Students
+            </button>
+            <button
+              onClick={() => setActiveTab('attendance')}
+              className={`flex-1 min-w-fit px-6 py-4 font-bold text-center transition-all duration-300 flex items-center justify-center gap-2 rounded-xl ${
+                activeTab === 'attendance'
+                  ? 'bg-gradient-to-r from-slate-900 to-blue-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <CalendarCheck2 size={20} />
+              Attendance
+            </button>
+            <button
+              onClick={() => setActiveTab('results')}
+              className={`flex-1 min-w-fit px-6 py-4 font-bold text-center transition-all duration-300 flex items-center justify-center gap-2 rounded-xl ${
+                activeTab === 'results'
+                  ? 'bg-gradient-to-r from-slate-900 to-blue-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <GraduationCap size={20} />
+              Results
+            </button>
+            <button
+              onClick={() => setActiveTab('fees')}
+              className={`flex-1 min-w-fit px-6 py-4 font-bold text-center transition-all duration-300 flex items-center justify-center gap-2 rounded-xl ${
+                activeTab === 'fees'
+                  ? 'bg-gradient-to-r from-slate-900 to-blue-600 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <Wallet size={20} />
+              Fee Collection
             </button>
             <button
               onClick={() => setActiveTab('departments')}
@@ -258,11 +305,9 @@ function PrincipalPortalContent() {
                       className="px-4 py-2 border-2 border-slate-300 rounded-lg font-bold focus:outline-none focus:border-blue-500"
                     >
                       <option>All</option>
-                      <option>10A</option>
-                      <option>10B</option>
-                      <option>10C</option>
-                      <option>11A</option>
-                      <option>11B</option>
+                      {CLASSES.map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -273,22 +318,22 @@ function PrincipalPortalContent() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h4 className="text-xl font-bold text-slate-900">{student.name}</h4>
-                          <p className="text-slate-600 text-sm mt-1">Class: {student.class} | ID: #{student.id}</p>
+                          <p className="text-slate-600 text-sm mt-1">Class: {student.class} | Roll {student.rollNo} | ID: {student.id}</p>
                         </div>
                         <button
-                          onClick={() => handleEditStudent(student)}
+                          onClick={() => setSelectedStudentId(student.id)}
                           className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:shadow-lg transition-all"
                         >
-                          <Edit2 size={18} />
-                          Edit
+                          <Eye size={18} />
+                          View
                         </button>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-sm text-slate-600 font-semibold mb-2">Marks</p>
+                          <p className="text-sm text-slate-600 font-semibold mb-2">{latestExam ? latestExam.name : 'Marks'}</p>
                           <div className={`bg-gradient-to-r ${getGradeColor(student.marks)} text-white px-4 py-3 rounded-xl font-bold text-xl text-center`}>
-                            {student.marks}
+                            {student.grade === '–' ? '–' : `${student.marks}%`}
                           </div>
                         </div>
                         <div>
@@ -298,15 +343,15 @@ function PrincipalPortalContent() {
                           </div>
                         </div>
                         <div>
-                          <p className="text-sm text-slate-600 font-semibold mb-2">Status</p>
-                          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-3 rounded-xl font-bold text-center">
-                            {student.status}
+                          <p className="text-sm text-slate-600 font-semibold mb-2">Fees</p>
+                          <div className={`bg-gradient-to-r ${feeBadge[student.fees.status].className} text-white px-4 py-3 rounded-xl font-bold text-center`}>
+                            {feeBadge[student.fees.status].label}
                           </div>
                         </div>
                         <div>
                           <p className="text-sm text-slate-600 font-semibold mb-2">Grade</p>
                           <div className={`bg-gradient-to-r ${getGradeColor(student.marks)} text-white px-4 py-3 rounded-xl font-bold text-center`}>
-                            {student.marks >= 90 ? 'A' : student.marks >= 80 ? 'B' : student.marks >= 70 ? 'C' : 'D'}
+                            {student.grade}
                           </div>
                         </div>
                       </div>
@@ -319,7 +364,7 @@ function PrincipalPortalContent() {
             {/* Departments Tab */}
             {activeTab === 'departments' && (
               <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-slate-900 mb-6">Department Overview</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-6">Department Overview{latestExam && <span className="block text-base font-semibold text-slate-500 mt-1">Pass rates from {latestExam.name}</span>}</h3>
                 <div className="grid grid-cols-1 gap-4">
                   {departments.map((dept, idx) => (
                     <div key={idx} className="group bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-2xl transition-all">
@@ -340,8 +385,8 @@ function PrincipalPortalContent() {
                           <p className="text-2xl font-bold text-purple-600 mt-2">{dept.teachers}</p>
                         </div>
                         <div className="bg-orange-50 p-4 rounded-xl">
-                          <p className="text-sm text-slate-600 font-semibold">Ratio</p>
-                          <p className="text-2xl font-bold text-orange-600 mt-2">{Math.round(dept.students / dept.teachers)}</p>
+                          <p className="text-sm text-slate-600 font-semibold">Average score</p>
+                          <p className="text-2xl font-bold text-orange-600 mt-2">{dept.average}%</p>
                         </div>
                       </div>
                     </div>
@@ -454,6 +499,12 @@ function PrincipalPortalContent() {
             )}
 
             {/* Timetable Tab */}
+            {activeTab === 'attendance' && <AttendanceOverview />}
+
+            {activeTab === 'results' && <ResultsOverview />}
+
+            {activeTab === 'fees' && <PaymentSheet readOnly />}
+
             {activeTab === 'timetable' && (
               <TimetableView
                 entries={schoolTimetable}
@@ -470,66 +521,57 @@ function PrincipalPortalContent() {
         </Link>
       </div>
 
-      {/* Edit Modal */}
-      {showEditModal && selectedStudent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">Update Student Data</h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
+      {/* Student profile */}
+      {selectedStudent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedStudentId(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">{selectedStudent.name}</h2>
+                <p className="text-slate-600 text-sm">
+                  Class {selectedStudent.classId} · Roll {selectedStudent.rollNo} · {selectedStudent.id}
+                </p>
+              </div>
+              <button onClick={() => setSelectedStudentId(null)} className="p-2 hover:bg-slate-100 rounded-lg transition" aria-label="Close">
                 <X size={24} />
               </button>
             </div>
 
-            <div className="space-y-6 mb-8">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Student: {selectedStudent.name}</label>
-                <p className="text-slate-600">Class: {selectedStudent.class}</p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{latestExam?.name ?? 'Latest exam'}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{selectedStudent.grade === '–' ? '–' : `${selectedStudent.marks}%`}</p>
+                {selectedStudent.grade !== '–' && (
+                  <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-xs font-bold ${GRADE_STYLES[selectedStudent.grade]}`}>Grade {selectedStudent.grade}</span>
+                )}
               </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-3">Marks (0-100)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={editData.marks}
-                  onChange={(e) => setEditData({ ...editData, marks: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 font-bold text-lg"
-                />
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Attendance</p>
+                <p className={`mt-1 text-2xl font-bold ${selectedStudent.attendance < 75 ? 'text-rose-600' : 'text-slate-900'}`}>{selectedStudent.attendance}%</p>
+                <p className="text-xs text-slate-500">this term</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-3">Attendance (0-100%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={editData.attendance}
-                  onChange={(e) => setEditData({ ...editData, attendance: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 font-bold text-lg"
-                />
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Homework</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{selectedStudent.homeworkDone}%</p>
+                <p className="text-xs text-slate-500">handed in</p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Fees balance</p>
+                <p className={`mt-1 text-2xl font-bold ${selectedStudent.fees.overdue > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{formatINR(selectedStudent.fees.balance)}</p>
+                <p className="text-xs text-slate-500">{selectedStudent.fees.overdue > 0 ? `${formatINR(selectedStudent.fees.overdue)} overdue` : 'nothing overdue'}</p>
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveStudent}
-                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:shadow-lg transition"
-              >
-                <Save size={20} />
-                Save
-              </button>
+            <div className="rounded-2xl border border-slate-200 p-4 text-sm mb-6">
+              <p className="font-bold text-slate-900">Parent / guardian</p>
+              <p className="text-slate-600">
+                {selectedStudent.parentName} · {selectedStudent.parentPhone}
+              </p>
             </div>
+
+            <p className="text-xs text-slate-500">
+              Marks and attendance come from the teachers&apos; registers and fees from the accounts office, so they are updated there rather than edited here.
+            </p>
           </div>
         </div>
       )}

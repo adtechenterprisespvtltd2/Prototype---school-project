@@ -386,3 +386,22 @@
     opacity: 1 !important;
   }
 }
+
+/* Report card printing: only the card is printed while body has .printing-report */
+@media print {
+  body.printing-report * {
+    visibility: hidden;
+  }
+  body.printing-report .report-print-area,
+  body.printing-report .report-print-area * {
+    visibility: visible;
+  }
+  body.printing-report .report-print-area {
+    position: absolute;
+    inset: 0 0 auto 0;
+    max-width: none;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

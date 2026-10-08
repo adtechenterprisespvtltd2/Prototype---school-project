@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import Header from '@/components/header'
-import { FileText, Download, Printer, TrendingUp, Calendar, DollarSign, ArrowLeft } from 'lucide-react'
+import { ProtectedRoute } from '@/components/protected-route'
+import { FileText, Download, Printer, TrendingUp, Calendar, DollarSign, ArrowLeft, Sheet } from 'lucide-react'
 import Link from 'next/link'
+import { PaymentSheet } from '@/components/school/fees'
 
 interface StudentReceipt {
   id: string
@@ -28,8 +30,8 @@ interface RevenueStudentInfo {
   rollNo: string
 }
 
-export default function AccountantPortal() {
-  const [activeTab, setActiveTab] = useState<'receipts' | 'revenue'>('receipts')
+function AccountantPortalContent() {
+  const [activeTab, setActiveTab] = useState<'sheet' | 'receipts' | 'revenue'>('sheet')
   const [receipts, setReceipts] = useState<StudentReceipt[]>([])
 
   const [formData, setFormData] = useState({
@@ -430,7 +432,20 @@ export default function AccountantPortal() {
           <>
             {/* Tab Navigation */}
             <div className="bg-white rounded-lg border border-gray-200 mb-6 sticky top-24 z-40">
-              <div className="flex border-b border-gray-200">
+              <div className="flex overflow-x-auto border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab('sheet')}
+                  className={`flex-1 whitespace-nowrap py-4 px-6 font-semibold transition ${
+                    activeTab === 'sheet'
+                      ? 'text-slate-900 border-b-2 border-slate-900 bg-slate-50'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Sheet size={20} />
+                    Payment Sheet
+                  </div>
+                </button>
                 <button
                   onClick={() => setActiveTab('receipts')}
                   className={`flex-1 py-4 px-6 font-semibold transition ${
@@ -459,6 +474,8 @@ export default function AccountantPortal() {
                   </button>
           </div>
         </div>
+
+        {activeTab === 'sheet' && <PaymentSheet receivedBy="Mr. Rajesh Kumar" />}
 
         {/* Receipts Tab */}
         {activeTab === 'receipts' && !previewReceipt && (
@@ -574,105 +591,6 @@ export default function AccountantPortal() {
             </div>
 
             <div className="hidden" aria-hidden="true">
-            {/* Receipt Preview */}
-            {previewReceipt && (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-lg">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Receipt Preview</h2>
-                  <button
-                    onClick={() => setPreviewReceipt(null)}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Receipt */}
-                <div className="max-w-2xl mx-auto bg-white border-2 border-gray-900 p-8 mb-8" id="receipt-preview">
-                  <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">FEE RECEIPT</h1>
-                    <p className="text-gray-600 mt-1">EduPro School Management System</p>
-                    <p className="text-xs text-gray-500 mt-1">Receipt No. {previewReceipt.utrNo}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-8 mb-8 pb-8 border-b-2 border-gray-900">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">Receipt Number</p>
-                      <p className="text-lg font-bold text-gray-900 mt-1">{previewReceipt.utrNo}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-700">Date</p>
-                      <p className="text-lg font-bold text-gray-900 mt-1">{previewReceipt.date}</p>
-                    </div>
-                  </div>
-
-                  <div className="mb-8 pb-8 border-b-2 border-gray-900">
-                    <p className="text-sm font-semibold text-gray-700">Student Name</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">{previewReceipt.name}</p>
-                  </div>
-
-                  <div className="mb-8">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b-2 border-gray-900">
-                          <th className="text-left py-3 text-sm font-semibold text-gray-700">Description</th>
-                          <th className="text-right py-3 text-sm font-semibold text-gray-700">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-gray-300">
-                          <td className="py-4 text-gray-900">School Fee (Tuition)</td>
-                          <td className="text-right py-4 font-semibold text-gray-900">₹{previewReceipt.feeAmount.toLocaleString()}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex justify-end mb-8 pb-8 border-b-2 border-gray-900">
-                    <div className="text-right">
-                      <p className="text-xs text-gray-600 mb-1">Total Amount Due</p>
-                      <p className="text-3xl font-bold text-gray-900">₹{previewReceipt.feeAmount.toLocaleString()}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-8 mt-8">
-                    <div>
-                      <p className="text-xs text-gray-600 mb-16">Received By</p>
-                      <p className="text-sm font-semibold text-gray-900 border-t-2 border-gray-900 pt-2">_________________</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-600 mb-16">Authorized By</p>
-                      <p className="text-sm font-semibold text-gray-900 border-t-2 border-gray-900 pt-2">_________________</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 p-4 bg-blue-50 rounded text-xs text-gray-600 border border-blue-200">
-                    <p className="mb-1"><strong>Payment Method:</strong> {previewReceipt.paymentMethod}</p>
-                    <p className="mb-1"><strong>Status:</strong> <span className="text-green-600 font-semibold">{previewReceipt.status}</span></p>
-                    <p className="text-gray-500">This is a computer-generated receipt and is valid without a signature.</p>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-4 justify-center mt-8">
-                  <button
-                    onClick={() => printReceipt(previewReceipt)}
-                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-3 px-8 rounded-lg font-semibold transition shadow-lg"
-                  >
-                    <Printer size={20} />
-                    Print Receipt
-                  </button>
-                  <button
-                    onClick={() => downloadReceipt(previewReceipt)}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-semibold transition shadow-lg"
-                  >
-                    <Download size={20} />
-                    Download Receipt
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg">
@@ -1067,5 +985,13 @@ export default function AccountantPortal() {
         )}
       </div>
     </main>
+  )
+}
+
+export default function AccountantPortal() {
+  return (
+    <ProtectedRoute allowedRoles={['accountant']}>
+      <AccountantPortalContent />
+    </ProtectedRoute>
   )
 }

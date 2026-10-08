@@ -24,6 +24,11 @@ MessageCircle,
 } from 'lucide-react'
 import TimetableView from '@/components/timetable-view'
 import { teacherTimetable } from '@/lib/timetable-data'
+import { useSchoolData } from '@/context/school-data-context'
+import { AttendanceManager } from '@/components/school/attendance'
+import { ResultsManager } from '@/components/school/results'
+import { HomeworkManager } from '@/components/school/homework'
+import { ClassId, examResult, studentsIn, summarizeAttendance, todayISO } from '@/lib/school-data'
 
 type PortalTab =
   | 'dashboard'
@@ -38,36 +43,9 @@ type PortalTab =
   | 'statistics'
   | 'timetable'
 
-type Student = {
-  id: number
-  name: string
-  rollNo: string
-  parentName: string
-  parentPhone: string
-  attendance: number
-  average: number
-  present: boolean
-}
-
-type UploadRecord = {
-  id: number
-  student: string
-  subject: string
-  marks: number
-  term: string
-}
-
 type Attachment = {
   name: string
   size: string
-}
-
-type HomeworkItem = {
-  id: number
-  title: string
-  subject: string
-  dueDate: string
-  attachment?: Attachment
 }
 
 type NoteItem = {
@@ -151,25 +129,6 @@ function TeacherPortalContent() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<PortalTab>('dashboard')
 
-  const [students, setStudents] = useState<Student[]>([
-    { id: 1, name: 'John Smith', rollNo: '10A-01', parentName: 'Anna Smith', parentPhone: '+1 555 1101', attendance: 96, average: 95, present: true },
-    { id: 2, name: 'Emma Wilson', rollNo: '10A-02', parentName: 'Laura Wilson', parentPhone: '+1 555 1102', attendance: 98, average: 98, present: true },
-    { id: 3, name: 'Michael Brown', rollNo: '10A-03', parentName: 'David Brown', parentPhone: '+1 555 1103', attendance: 89, average: 95, present: false },
-    { id: 4, name: 'Sarah Davis', rollNo: '10A-04', parentName: 'Maria Davis', parentPhone: '+1 555 1104', attendance: 93, average: 94, present: true },
-    { id: 5, name: 'James Miller', rollNo: '10A-05', parentName: 'Robert Miller', parentPhone: '+1 555 1105', attendance: 95, average: 96, present: true },
-    { id: 6, name: 'Lisa Anderson', rollNo: '10A-06', parentName: 'Monica Anderson', parentPhone: '+1 555 1106', attendance: 91, average: 95, present: false },
-  ])
-
-  const [results, setResults] = useState<UploadRecord[]>([
-    { id: 1, student: 'Emma Wilson', subject: 'Mathematics', marks: 98, term: 'Mid-Term' },
-    { id: 2, student: 'Sarah Davis', subject: 'Science', marks: 94, term: 'Mid-Term' },
-  ])
-
-  const [homework, setHomework] = useState<HomeworkItem[]>([
-    { id: 1, title: 'Algebra practice set', subject: 'Mathematics', dueDate: '2026-08-08' },
-    { id: 2, title: 'Lab report summary', subject: 'Science', dueDate: '2026-08-09' },
-  ])
-
   const [notes, setNotes] = useState<NoteItem[]>([
     { id: 1, title: 'Chapter 4 revision notes', subject: 'Mathematics', postedOn: '2026-08-04' },
     { id: 2, title: 'History worksheet', subject: 'Social Studies', postedOn: '2026-08-03' },
@@ -190,14 +149,11 @@ function TeacherPortalContent() {
     { id: 2, parent: 'Laura Wilson', message: 'Please share extra practice material for the next test.', time: '1 hour ago' },
   ])
 
-  const [resultForm, setResultForm] = useState({ student: '', subject: '', marks: '', term: 'Mid-Term' })
-  const [homeworkForm, setHomeworkForm] = useState({ title: '', subject: '', dueDate: '' })
   const [noteForm, setNoteForm] = useState({ title: '', subject: '', summary: '' })
   const [questionForm, setQuestionForm] = useState({ subject: '', chapter: '', questions: '', difficulty: 'Medium', marks: '' })
   const [paperForm, setPaperForm] = useState({ subject: '', exam: '', year: '', marks: '', duration: '' })
   const [messageForm, setMessageForm] = useState({ parent: '', message: '' })
 
-  const [homeworkAttachment, setHomeworkAttachment] = useState<Attachment | null>(null)
   const [noteAttachment, setNoteAttachment] = useState<Attachment | null>(null)
   const [questionAttachment, setQuestionAttachment] = useState<Attachment | null>(null)
   const [paperAttachment, setPaperAttachment] = useState<Attachment | null>(null)
@@ -208,24 +164,39 @@ function TeacherPortalContent() {
     return { name: file.name, size: `${(file.size / 1024).toFixed(1)} KB` }
   }
 
-  const classAverage = useMemo(
-    () => Math.round(students.reduce((sum, student) => sum + student.average, 0) / students.length),
-    [students]
+  const { data: schoolData } = useSchoolData()
+  const homeClass: ClassId = user?.classId === 'CLASS-10B' ? '10B' : '10A'
+  const todayRegister = schoolData.attendance[todayISO()] || {}
+  const latestExam = [...schoolData.exams].filter((e) => e.published && schoolData.marks[e.id]).sort((a, b) => b.date.localeCompare(a.date))[0]
+
+  // Class roster enriched with live attendance and the latest published exam score.
+  const students = useMemo(
+    () =>
+      studentsIn(homeClass).map((s) => ({
+        id: s.id,
+        name: s.name,
+        rollNo: `${s.classId}-${String(s.rollNo).padStart(2, '0')}`,
+        parentName: s.parentName,
+        parentPhone: s.parentPhone,
+        attendance: summarizeAttendance(schoolData.attendance, s.id).percent,
+        average: latestExam ? examResult(schoolData.marks, latestExam, s.id).percent : 0,
+        today: todayRegister[s.id],
+      })),
+    [homeClass, schoolData.attendance, schoolData.marks, latestExam, todayRegister]
   )
 
-  const attendanceAverage = useMemo(
-    () => Math.round(students.reduce((sum, student) => sum + student.attendance, 0) / students.length),
-    [students]
-  )
+  const classAverage = Math.round(students.reduce((sum, s) => sum + s.average, 0) / students.length)
+  const attendanceAverage = Math.round(students.reduce((sum, s) => sum + s.attendance, 0) / students.length)
+  const topStudent = [...students].sort((a, b) => b.average - a.average)[0]
 
-  const presentToday = students.filter((student) => student.present).length
-  const homeworkDue = homework.length
+  const presentToday = students.filter((s) => s.today === 'present' || s.today === 'late').length
+  const homeworkDue = schoolData.homework.filter((h) => h.dueDate >= todayISO()).length
 
   const tabs: { id: PortalTab; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'students', label: 'Manage Students', icon: Users },
     { id: 'attendance', label: 'Attendance', icon: ClipboardCheck },
-    { id: 'results', label: 'Upload Results', icon: Upload },
+    { id: 'results', label: 'Results', icon: Upload },
     { id: 'homework', label: 'Homework', icon: BookOpenCheck },
     { id: 'notes', label: 'Upload Notes', icon: NotebookPen },
     { id: 'questions', label: 'Important Questions', icon: HelpCircle },
@@ -234,49 +205,6 @@ function TeacherPortalContent() {
     { id: 'statistics', label: 'Statistics', icon: TrendingUp },
     { id: 'timetable', label: 'Timetable', icon: CalendarRange },
   ]
-
-  const updateAttendance = (studentId: number) => {
-    setStudents((currentStudents) =>
-      currentStudents.map((student) =>
-        student.id === studentId
-          ? { ...student, present: !student.present, attendance: Math.min(100, student.attendance + (student.present ? -1 : 1)) }
-          : student
-      )
-    )
-  }
-
-  const handleResultSubmit = () => {
-    if (!resultForm.student || !resultForm.subject || !resultForm.marks) return
-
-    setResults((currentResults) => [
-      {
-        id: currentResults.length + 1,
-        student: resultForm.student,
-        subject: resultForm.subject,
-        marks: Number(resultForm.marks),
-        term: resultForm.term,
-      },
-      ...currentResults,
-    ])
-    setResultForm({ student: '', subject: '', marks: '', term: 'Mid-Term' })
-  }
-
-  const handleHomeworkSubmit = () => {
-    if (!homeworkForm.title || !homeworkForm.subject || !homeworkForm.dueDate) return
-
-    setHomework((currentHomework) => [
-      {
-        id: currentHomework.length + 1,
-        title: homeworkForm.title,
-        subject: homeworkForm.subject,
-        dueDate: homeworkForm.dueDate,
-        attachment: homeworkAttachment || undefined,
-      },
-      ...currentHomework,
-    ])
-    setHomeworkForm({ title: '', subject: '', dueDate: '' })
-    setHomeworkAttachment(null)
-  }
 
   const handleNoteSubmit = () => {
     if (!noteForm.title || !noteForm.subject || !noteForm.summary) return
@@ -352,7 +280,7 @@ function TeacherPortalContent() {
     { label: 'Students', value: students.length, icon: Users },
     { label: 'Attendance', value: `${attendanceAverage}%`, icon: ClipboardCheck },
     { label: 'Class Average', value: `${classAverage}%`, icon: TrendingUp },
-    { label: 'Homework Items', value: homeworkDue, icon: FileText },
+    { label: 'Active Homework', value: homeworkDue, icon: FileText },
   ]
 
   return (
@@ -502,7 +430,7 @@ function TeacherPortalContent() {
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Manage Students</p>
-                <h2 className="mt-2 text-3xl font-bold text-slate-900">Class 10A roster</h2>
+                <h2 className="mt-2 text-3xl font-bold text-slate-900">Class {homeClass} roster</h2>
               </div>
               <div className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">
                 {students.length} students
@@ -518,7 +446,7 @@ function TeacherPortalContent() {
                       <p className="text-sm text-slate-500">Roll No. {student.rollNo}</p>
                     </div>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
-                      {student.present ? 'Present' : 'Absent'}
+                      {student.today ? student.today[0].toUpperCase() + student.today.slice(1) : 'Not marked'}
                     </span>
                   </div>
 
@@ -528,7 +456,7 @@ function TeacherPortalContent() {
                       <p className="mt-2 text-2xl font-bold text-slate-900">{student.attendance}%</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Average</p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Latest exam</p>
                       <p className="mt-2 text-2xl font-bold text-slate-900">{student.average}%</p>
                     </div>
                     <div className="rounded-2xl bg-white p-4">
@@ -544,181 +472,11 @@ function TeacherPortalContent() {
           </section>
         )}
 
-        {activeTab === 'attendance' && (
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Attendance</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Mark today&apos;s attendance</h2>
-              <div className="mt-6 space-y-3">
-                {students.map((student) => (
-                  <button
-                    key={student.id}
-                    onClick={() => updateAttendance(student.id)}
-                    className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition ${
-                      student.present
-                        ? 'border-emerald-200 bg-emerald-50'
-                        : 'border-rose-200 bg-rose-50'
-                    }`}
-                  >
-                    <div>
-                      <p className="font-bold text-slate-900">{student.name}</p>
-                      <p className="text-sm text-slate-600">{student.rollNo}</p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-                      {student.present ? 'Present' : 'Absent'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+        {activeTab === 'attendance' && <AttendanceManager defaultClass={homeClass} />}
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Attendance Summary</p>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl bg-slate-900 p-5 text-white">
-                  <p className="text-slate-300 text-sm">Present Students</p>
-                  <p className="mt-3 text-4xl font-bold">{presentToday}</p>
-                </div>
-                <div className="rounded-2xl bg-blue-950 p-5 text-white">
-                  <p className="text-blue-200 text-sm">Attendance Average</p>
-                  <p className="mt-3 text-4xl font-bold">{attendanceAverage}%</p>
-                </div>
-              </div>
+        {activeTab === 'results' && <ResultsManager defaultClass={homeClass} />}
 
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-semibold text-slate-700">Class Note</p>
-                <p className="mt-2 text-sm text-slate-600">
-                  Attendance updates sync with the dashboard so you can quickly spot absences and follow up with parents.
-                </p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'results' && (
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Upload Results</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Add student marks</h2>
-
-              <div className="mt-6 space-y-4">
-                <input
-                  value={resultForm.student}
-                  onChange={(e) => setResultForm({ ...resultForm, student: e.target.value })}
-                  placeholder="Student name"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <input
-                  value={resultForm.subject}
-                  onChange={(e) => setResultForm({ ...resultForm, subject: e.target.value })}
-                  placeholder="Subject"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <input
-                    value={resultForm.marks}
-                    onChange={(e) => setResultForm({ ...resultForm, marks: e.target.value })}
-                    placeholder="Marks"
-                    type="number"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                  />
-                  <input
-                    value={resultForm.term}
-                    onChange={(e) => setResultForm({ ...resultForm, term: e.target.value })}
-                    placeholder="Term"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                  />
-                </div>
-                <button
-                  onClick={handleResultSubmit}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
-                >
-                  <Upload size={18} />
-                  Save Result
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Recent uploads</p>
-              <div className="mt-6 space-y-4">
-                {results.map((result) => (
-                  <div key={result.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-slate-900">{result.student}</p>
-                        <p className="text-sm text-slate-600">{result.subject} - {result.term}</p>
-                      </div>
-                      <p className="text-2xl font-bold text-slate-900">{result.marks}%</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'homework' && (
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Homework</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900">Assign work for the class</h2>
-
-              <div className="mt-6 space-y-4">
-                <input
-                  value={homeworkForm.title}
-                  onChange={(e) => setHomeworkForm({ ...homeworkForm, title: e.target.value })}
-                  placeholder="Homework title"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <input
-                  value={homeworkForm.subject}
-                  onChange={(e) => setHomeworkForm({ ...homeworkForm, subject: e.target.value })}
-                  placeholder="Subject"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <input
-                  value={homeworkForm.dueDate}
-                  onChange={(e) => setHomeworkForm({ ...homeworkForm, dueDate: e.target.value })}
-                  type="date"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-slate-400"
-                />
-                <AttachmentPicker
-                  label="Attach document"
-                  attachment={homeworkAttachment}
-                  onFile={(e) => setHomeworkAttachment(readAttachment(e))}
-                  onClear={() => setHomeworkAttachment(null)}
-                />
-                <button
-                  onClick={handleHomeworkSubmit}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white transition hover:bg-slate-800"
-                >
-                  <FileText size={18} />
-                  Publish Homework
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Assigned homework</p>
-              <div className="mt-6 space-y-4">
-                {homework.map((item) => (
-                  <article key={item.id} className="rounded-2xl bg-slate-50 p-4">
-                    <p className="font-bold text-slate-900">{item.title}</p>
-                    <p className="text-sm text-slate-600">{item.subject}</p>
-                    <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Due {item.dueDate}</p>
-                    {item.attachment && (
-                      <span className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
-                        <Paperclip size={14} className="text-blue-600" />
-                        {item.attachment.name} ({item.attachment.size})
-                      </span>
-                    )}
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        {activeTab === 'homework' && <HomeworkManager teacherName={user?.name || 'Class Teacher'} />}
 
         {activeTab === 'notes' && (
           <section className="grid gap-6 lg:grid-cols-2">
@@ -1044,13 +802,13 @@ function TeacherPortalContent() {
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl bg-slate-900 p-5 text-white">
                   <p className="text-sm text-slate-300">Highest scorer</p>
-                  <p className="mt-2 text-2xl font-bold">Emma Wilson</p>
-                  <p className="text-sm text-slate-300">92% average</p>
+                  <p className="mt-2 text-2xl font-bold">{topStudent?.name}</p>
+                  <p className="text-sm text-slate-300">{topStudent?.average}% in {latestExam?.name}</p>
                 </div>
                 <div className="rounded-2xl bg-blue-950 p-5 text-white">
                   <p className="text-sm text-blue-200">Attendance trend</p>
                   <p className="mt-2 text-2xl font-bold">Stable</p>
-                  <p className="text-sm text-blue-200">Class average 94%</p>
+                  <p className="text-sm text-blue-200">Class average {attendanceAverage}%</p>
                 </div>
               </div>
 

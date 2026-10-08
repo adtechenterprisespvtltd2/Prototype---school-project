@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, X, Search, Bell, BookOpen, LogOut, User } from 'lucide-react'
+import { Menu, X, Search, Bell, BookOpen, LogOut, User, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/context/auth-context'
+import { useSchoolData } from '@/context/school-data-context'
 import { useRouter } from 'next/navigation'
 
 export default function Header() {
@@ -11,6 +12,15 @@ export default function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const { user, logout } = useAuth()
   const router = useRouter()
+  const { resetDemoData } = useSchoolData()
+
+  const confirmReset = () => {
+    if (window.confirm('Reset all demo data? Attendance, marks, homework and payments go back to the original sample records on every portal.')) {
+      resetDemoData()
+      setUserMenuOpen(false)
+      setMenuOpen(false)
+    }
+  }
 
   const navLinks = [
     { href: '/academics', label: 'Academics' },
@@ -85,11 +95,18 @@ export default function Header() {
                 </button>
                 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-2 z-50">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-2 z-50">
                     <div className="px-4 py-2 border-b border-slate-200">
                       <p className="text-sm font-bold text-slate-900">{user.name}</p>
                       <p className="text-xs text-slate-600 capitalize">{user.role}</p>
                     </div>
+                    <button
+                      onClick={confirmReset}
+                      className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 text-sm font-medium"
+                    >
+                      <RotateCcw size={16} />
+                      Reset demo data
+                    </button>
                     <button
                       onClick={() => {
                         logout()
@@ -144,6 +161,12 @@ export default function Header() {
                 >
                   Portal
                 </Link>
+                <button
+                  onClick={confirmReset}
+                  className="block w-full text-left px-4 py-2 text-blue-100 text-sm font-bold hover:bg-blue-700/50 rounded transition"
+                >
+                  Reset demo data
+                </button>
                 <button
                   onClick={() => {
                     logout()

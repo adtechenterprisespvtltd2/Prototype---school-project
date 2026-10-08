@@ -4,10 +4,15 @@ import { useState } from 'react'
 import Header from '@/components/header'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/context/auth-context'
-import { BookOpen, TrendingUp, AlertCircle, CheckCircle, Clock, CreditCard, AlertTriangle, Bell, X, Megaphone, ShieldCheck, Smartphone, Landmark, ArrowLeft, Check, Loader2, Printer, Download, GraduationCap, CalendarRange } from 'lucide-react'
+import { BookOpen, TrendingUp, AlertCircle, CheckCircle, Clock, CreditCard, AlertTriangle, Bell, X, Megaphone, ShieldCheck, Smartphone, Landmark, ArrowLeft, Check, Loader2, Printer, Download, GraduationCap, CalendarRange, CalendarCheck2, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
 import { classTimetable } from '@/lib/timetable-data'
+import { useSchoolData } from '@/context/school-data-context'
+import { AttendanceCalendar } from '@/components/school/attendance'
+import { ReportCard } from '@/components/school/results'
+import { HomeworkBoard } from '@/components/school/homework'
+import { MONTHS, examResult, feeLedger, findStudent, summarizeAttendance } from '@/lib/school-data'
 
 function ParentPortalContent() {
   const { user } = useAuth()
@@ -16,20 +21,24 @@ function ParentPortalContent() {
   const [paymentStep, setPaymentStep] = useState<'select' | 'qr' | 'processing' | 'success'>('select')
   const [selectedMethod, setSelectedMethod] = useState<'card' | 'upi' | 'bank'>('upi')
 
+  const { data, recordPayment } = useSchoolData()
+  const childId = user?.childrenIds?.[0] || 'STU001'
+  const childRecord = findStudent(childId)!
+  const latestExam = [...data.exams].filter((e) => e.published).sort((a, b) => b.date.localeCompare(a.date))[0]
   const child = {
-    name: 'Alex Johnson',
-    class: '10A',
-    rollNo: '12',
-    percentage: 96.25,
-    attendance: 94,
+    name: childRecord.name,
+    class: childRecord.classId,
+    rollNo: String(childRecord.rollNo),
+    percentage: latestExam ? examResult(data.marks, latestExam, childId).percent : 0,
+    attendance: summarizeAttendance(data.attendance, childId).percent,
   }
 
-  const courses = [
-    { name: 'Mathematics', grade: 'A', marks: 96, remarks: 'Excellent analytical and problem-solving skills.' },
-    { name: 'Physics', grade: 'A', marks: 95, remarks: 'Outstanding comprehension of complex physics concepts.' },
-    { name: 'Chemistry', grade: 'A+', marks: 98, remarks: 'Exceptional performance in laboratory work and exams.' },
-    { name: 'English', grade: 'A', marks: 96, remarks: 'Strong essay writing and literature interpretation.' }
-  ]
+  // Latest published exam, shown as subject cards on the overview tab.
+  const courses = latestExam
+    ? examResult(data.marks, latestExam, childId)
+        .subjects.filter((sub) => sub.percent !== null)
+        .map((sub) => ({ name: sub.subject, grade: sub.grade!, marks: Math.round(sub.percent!) }))
+    : []
 
   const notices = [
     { id: 1, title: 'Mid-Term Exam Schedule', content: 'Exams start from March 1st. All students must report 15 mins early.', priority: 'high', date: '2024-02-15', createdBy: 'Principal' },
@@ -40,25 +49,23 @@ function ParentPortalContent() {
   const [selectedMonthToPay, setSelectedMonthToPay] = useState<any>(null)
   const [lastTxnId, setLastTxnId] = useState('')
   const [customAmount, setCustomAmount] = useState<string>('0')
-  const [totalFees, setTotalFees] = useState(60000)
-  const [paidFees, setPaidFees] = useState(10000)
-  const pendingFees = totalFees - paidFees
+  const ledger = feeLedger(data.payments, childId)
+  const totalFees = ledger.total
+  const paidFees = ledger.paid
+  const pendingFees = ledger.balance
   const paidPercentage = (paidFees / totalFees) * 100
 
-  const [paymentHistory, setPaymentHistory] = useState([
-    { id: 1, month: 'January', amount: 5000, date: '2026-01-05', status: 'Paid', txnId: 'TXN2026010501' },
-    { id: 2, month: 'February', amount: 5000, date: '2026-02-07', status: 'Paid', txnId: 'TXN2026020702' },
-    { id: 3, month: 'March', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 4, month: 'April', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 5, month: 'May', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 6, month: 'June', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 7, month: 'July', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 8, month: 'August', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 9, month: 'September', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 10, month: 'October', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 11, month: 'November', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-    { id: 12, month: 'December', amount: 5000, date: 'Pending', status: 'Unpaid', txnId: '' },
-  ])
+  const paymentHistory = ledger.lines.map((line, i) => {
+    const payment = ledger.payments.find((p) => p.allocations.some((a) => a.installmentId === line.id))
+    return {
+      id: line.id,
+      month: MONTHS[i],
+      amount: line.balance > 0 ? line.balance : line.amount,
+      date: line.balance === 0 ? payment?.date ?? '' : line.status === 'overdue' ? `Overdue since ${line.dueDate}` : `Due ${line.dueDate}`,
+      status: line.balance === 0 ? 'Paid' : 'Unpaid',
+      txnId: payment?.reference ?? '',
+    }
+  })
 
   const downloadReceipt = (month: string, amount: number, customTxnId?: string) => {
     const txnId = customTxnId || `TXN${Math.floor(1000000000 + Math.random() * 9000000000)}`
@@ -67,42 +74,16 @@ function ParentPortalContent() {
 
   const handlePaymentSuccess = () => {
     const generatedTxnId = `TXN${Math.floor(1000000000 + Math.random() * 9000000000)}`
-    setLastTxnId(generatedTxnId)
-    const todayStr = new Date().toISOString().split('T')[0]
-    const amtPaid = Number(customAmount) || 0
-
-    if (selectedMonthToPay) {
-      setPaidFees(prev => prev + amtPaid)
-      setPaymentHistory(prev => prev.map(item => {
-        if (item.id === selectedMonthToPay.id) {
-          return {
-            ...item,
-            amount: amtPaid,
-            status: 'Paid',
-            date: todayStr,
-            txnId: generatedTxnId
-          }
-        }
-        return item
-      }))
-    } else {
-      setPaidFees(prev => prev + amtPaid)
-      let remaining = amtPaid
-      setPaymentHistory(prev => prev.map(item => {
-        if (item.status === 'Unpaid' && remaining > 0) {
-          const allocation = Math.min(item.amount, remaining)
-          remaining -= allocation
-          return {
-            ...item,
-            amount: allocation,
-            status: 'Paid',
-            date: todayStr,
-            txnId: generatedTxnId
-          }
-        }
-        return item
-      }))
-    }
+    const amtPaid = Math.min(Number(customAmount) || 0, pendingFees)
+    const payment = recordPayment({
+      studentId: childId,
+      amount: amtPaid,
+      method: selectedMethod === 'card' ? 'Card' : selectedMethod === 'bank' ? 'Bank Transfer' : 'UPI',
+      reference: generatedTxnId,
+      installmentIds: selectedMonthToPay ? [selectedMonthToPay.id] : undefined,
+      receivedBy: 'Online payment',
+    })
+    setLastTxnId(payment?.reference ?? generatedTxnId)
   }
 
   const getPriorityColor = (priority: string) => {
@@ -122,7 +103,7 @@ function ParentPortalContent() {
           <div className="absolute -bottom-8 right-10 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="text-5xl md:text-6xl font-bold mb-3">Welcome, Mrs. Johnson</h1>
+          <h1 className="text-5xl md:text-6xl font-bold mb-3">Welcome, {user?.name || 'Parent'}</h1>
           <p className="text-blue-100 text-xl">Monitor {child.name}&apos;s academic progress and manage fees</p>
         </div>
       </section>
@@ -177,6 +158,28 @@ function ParentPortalContent() {
               Report Card
             </button>
             <button
+              onClick={() => setActiveTab('attendance')}
+              className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
+                activeTab === 'attendance'
+                  ? 'bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <CalendarCheck2 size={16} className="sm:w-5 sm:h-5" />
+              Attendance
+            </button>
+            <button
+              onClick={() => setActiveTab('homework')}
+              className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
+                activeTab === 'homework'
+                  ? 'bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <ClipboardList size={16} className="sm:w-5 sm:h-5" />
+              Homework
+            </button>
+            <button
               onClick={() => setActiveTab('fees')}
               className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
                 activeTab === 'fees'
@@ -212,11 +215,11 @@ function ParentPortalContent() {
           </div>
 
           {/* Content */}
-          <div className="p-10 bg-gradient-to-b from-white to-slate-50">
+          <div className="p-4 sm:p-6 lg:p-10 bg-gradient-to-b from-white to-slate-50">
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-8">
-                <h3 className="text-3xl font-bold text-slate-900 mb-6">Academic Performance</h3>
+                <h3 className="text-3xl font-bold text-slate-900 mb-6">Academic Performance{latestExam && <span className="block text-base font-semibold text-slate-500 mt-1">{latestExam.name}</span>}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {courses.map((course, idx) => (
                     <div key={idx} className="group bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
@@ -249,200 +252,11 @@ function ParentPortalContent() {
             )}
 
             {/* Report Card Tab */}
-            {activeTab === 'reportcard' && (
-              <div className="space-y-8 animate-fadeIn">
-                <div className="bg-gradient-to-br from-white via-slate-50 to-violet-50 rounded-[28px] border border-violet-200/70 overflow-hidden shadow-[0_30px_80px_rgba(15,23,42,0.12)] relative max-w-4xl mx-auto">
-                  {/* School Header */}
-                  <div className="bg-gradient-to-r from-indigo-950 via-violet-900 to-slate-900 text-white p-6 sm:p-8 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/50 via-transparent to-transparent"></div>
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="bg-blue-600/20 p-3.5 rounded-2xl border border-blue-500/30">
-                        <GraduationCap className="w-8 h-8 text-blue-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">EDUPRO HIGH SCHOOL</h2>
-                        <p className="text-fuchsia-200/90 text-xs sm:text-sm tracking-widest uppercase mt-0.5">Academic Performance Report Card</p>
-                      </div>
-                    </div>
-                    <div className="text-center md:text-right relative z-10">
-                      <p className="text-sm font-bold text-blue-400">Academic Year: 2025-2026</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Term: Mid-Term Examination</p>
-                    </div>
-                  </div>
+            {activeTab === 'reportcard' && <ReportCard studentId={childId} />}
 
-                  {/* Student Details Info Bar */}
-                  <div className="bg-gradient-to-r from-slate-50 via-violet-50 to-cyan-50 border-b border-violet-100 p-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Student Name</p>
-                      <p className="font-extrabold text-slate-800 text-base">{child.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Class / Section</p>
-                      <p className="font-extrabold text-slate-800 text-base">{child.class}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Roll Number</p>
-                      <p className="font-extrabold text-slate-800 text-base">{child.rollNo}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Student ID</p>
-                      <p className="font-extrabold text-slate-800 text-base">STU2025-012</p>
-                    </div>
-                  </div>
+            {activeTab === 'attendance' && <AttendanceCalendar studentId={childId} viewer="parent" />}
 
-                  {/* Subjects Grades Table (Tablet/Desktop) */}
-                  <div className="hidden sm:block p-6 sm:p-8 overflow-x-auto">
-                    <table className="w-full min-w-[600px] border-collapse">
-                      <thead>
-                        <tr className="border-b-2 border-slate-200">
-                          <th className="py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-xs">Subject</th>
-                          <th className="py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Max Marks</th>
-                          <th className="py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Marks Obtained</th>
-                          <th className="py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Grade</th>
-                          <th className="py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-xs pl-6">Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {courses.map((subj, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 font-bold text-slate-900">{subj.name}</td>
-                            <td className="py-4 text-center text-slate-600 font-semibold">100</td>
-                            <td className="py-4 text-center">
-                              <span className="inline-flex items-center justify-center font-bold text-slate-900 bg-slate-100 px-3 py-1 rounded-full text-sm">
-                                {subj.marks}
-                              </span>
-                            </td>
-                            <td className="py-4 text-center">
-                              <span className={`inline-flex items-center justify-center font-extrabold text-white text-xs px-2.5 py-1 rounded-md shadow-sm bg-gradient-to-r ${
-                                subj.grade === 'A+' ? 'from-emerald-500 to-emerald-600' :
-                                subj.grade === 'A' ? 'from-green-500 to-green-600' :
-                                subj.grade === 'A-' ? 'from-teal-500 to-teal-600' :
-                                'from-blue-500 to-blue-600'
-                              }`}>
-                                {subj.grade}
-                              </span>
-                            </td>
-                            <td className="py-4 text-slate-600 text-sm pl-6 italic">{subj.remarks}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile Subjects Grades Cards (Mobile Only) */}
-                  <div className="block sm:hidden p-4 border-t border-slate-100">
-                    <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-4">Subject Grades</h3>
-                    <div className="space-y-4">
-                      {courses.map((subj, idx) => (
-                        <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3 animate-fadeIn">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-extrabold text-slate-900 text-sm leading-tight">{subj.name}</h4>
-                            </div>
-                            <span className={`inline-flex items-center justify-center font-extrabold text-white text-[10px] px-2.5 py-0.5 rounded shadow-sm bg-gradient-to-r ${
-                              subj.grade === 'A+' ? 'from-emerald-500 to-emerald-600' :
-                              subj.grade === 'A' ? 'from-green-500 to-green-600' :
-                              subj.grade === 'A-' ? 'from-teal-500 to-teal-600' :
-                              'from-blue-500 to-blue-600'
-                            }`}>
-                              {subj.grade}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-6 text-xs text-slate-700 font-semibold bg-white border border-slate-200/40 rounded-xl p-2.5">
-                            <div>
-                              <span className="text-slate-400 font-medium block text-[9px] uppercase tracking-wider">Score</span>
-                              <span className="text-slate-900 font-bold">{subj.marks} <span className="text-slate-400 font-normal">/ 100</span></span>
-                            </div>
-                            <div className="h-6 w-[1px] bg-slate-200"></div>
-                            <div>
-                              <span className="text-slate-400 font-medium block text-[9px] uppercase tracking-wider">Status</span>
-                              <span className="text-emerald-600 font-bold">Passed</span>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <span className="text-slate-400 font-medium block text-[9px] uppercase tracking-wider mb-1">Remarks</span>
-                            <p className="text-slate-600 text-xs italic bg-white border border-slate-200/40 rounded-xl p-3 leading-relaxed">
-                              "{subj.remarks}"
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Summary Section */}
-                  <div className="border-t border-slate-200 bg-slate-50/50 p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                    {/* Performance Summary Indicators */}
-                    <div className="space-y-4">
-                      <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Performance Metrics</h3>
-                      <div className="grid grid-cols-1 min-[450px]:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm">
-                          <p className="text-slate-500 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Cumulative Percentage</p>
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-xl sm:text-2xl font-extrabold text-blue-600">{child.percentage}%</span>
-                            <span className="text-slate-400 text-xs font-semibold">/ 100%</span>
-                          </div>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm">
-                          <p className="text-slate-500 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Attendance Rate</p>
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-xl sm:text-2xl font-extrabold text-emerald-600">{child.attendance}%</span>
-                            <span className="text-slate-400 text-xs font-semibold">/ 100%</span>
-                          </div>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm">
-                          <p className="text-slate-500 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Total Score</p>
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-xl sm:text-2xl font-extrabold text-slate-800">
-                              {courses.reduce((sum, c) => sum + (c.marks || 0), 0)}
-                            </span>
-                            <span className="text-slate-400 text-xs font-semibold">/ {courses.length * 100}</span>
-                          </div>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-center">
-                          <p className="text-slate-500 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Result Status</p>
-                          <span className="text-xs sm:text-base font-extrabold text-emerald-600 flex items-center gap-1 mt-0.5">
-                            <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Passed
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* School Remarks & Seals */}
-                    <div className="space-y-4 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Teacher Remarks</h3>
-                        <p className="text-slate-600 text-sm italic leading-relaxed bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                          "Alex has consistently demonstrated academic excellence and active participation in class discussions. Keep up the high standards!"
-                        </p>
-                      </div>
-                      
-                      {/* Buttons to print / download */}
-                      <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full">
-                        <button
-                          onClick={() => {
-                            window.open('/print-report', '_blank')
-                          }}
-                          className="flex-1 min-w-[150px] bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-blue-600/25 transition-all duration-300 flex items-center justify-center gap-2"
-                        >
-                          <Printer size={18} /> Print Report
-                        </button>
-                        <button
-                          onClick={() => {
-                            window.open('/print-report', '_blank')
-                          }}
-                          className="flex-1 min-w-[150px] bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2"
-                        >
-                          <Download size={18} /> Save as PDF
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeTab === 'homework' && <HomeworkBoard studentId={childId} mode="parent" />}
 
             {/* Fees Tab */}
             {activeTab === 'fees' && (

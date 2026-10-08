@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/context/auth-context'
+import { SchoolDataProvider } from '@/context/school-data-context'
 import ScrollReveal from '@/components/scroll-reveal'
 
 export const metadata: Metadata = {
@@ -44,9 +45,11 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased bg-white">
 <AuthProvider>
-          <ScrollReveal />
-          {children}
-          {process.env.NODE_ENV === 'production' && <Analytics />}
+          <SchoolDataProvider>
+            <ScrollReveal />
+            {children}
+            {process.env.NODE_ENV === 'production' && <Analytics />}
+          </SchoolDataProvider>
         </AuthProvider>
       </body>
     </html>

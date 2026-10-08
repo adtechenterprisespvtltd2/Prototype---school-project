@@ -4,12 +4,17 @@ import { useState } from 'react'
 import Header from '@/components/header'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/context/auth-context'
-import { BookOpen, Clock, CheckCircle, AlertCircle, Download, Award, TrendingUp, Bell, User, Megaphone, ArrowLeft, Printer, GraduationCap, HelpCircle, FileText, ClipboardList, NotebookPen, CalendarRange } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, CalendarCheck2, AlertCircle, Download, Award, TrendingUp, Bell, User, Megaphone, ArrowLeft, Printer, GraduationCap, HelpCircle, FileText, ClipboardList, NotebookPen, CalendarRange } from 'lucide-react'
 import Link from 'next/link'
 import TimetableView from '@/components/timetable-view'
 import { classTimetable } from '@/lib/timetable-data'
+import { AttendanceCalendar } from '@/components/school/attendance'
+import { ReportCard } from '@/components/school/results'
+import { HomeworkBoard } from '@/components/school/homework'
 
 function StudentPortalContent() {
+  const { user } = useAuth()
+  const studentId = user?.id || 'STU001'
   const [activeTab, setActiveTab] = useState('courses')
 
   const notices = [
@@ -46,12 +51,6 @@ function StudentPortalContent() {
     { id: 4, subject: 'English Literature', exam: 'Unit Test', year: '2024', marks: '40 Marks', duration: '1.5 Hours' },
   ]
 
-  const homework = [
-    { id: 1, subject: 'Mathematics', title: 'Practice Differentiation Problems', date: '2024-02-12', due: '2024-02-18', status: 'pending' },
-    { id: 2, subject: 'Chemistry', title: 'Organic Chemistry Worksheet', date: '2024-02-11', due: '2024-02-20', status: 'submitted' },
-    { id: 3, subject: 'Physics', title: 'Physics Numericals - Motion & Forces', date: '2024-02-13', due: '2024-02-22', status: 'pending' },
-  ]
-
   const notes = [
     { id: 1, subject: 'Physics', title: 'Handwritten Notes - Quantum Mechanics', date: '2024-02-10', size: '2.4 MB' },
     { id: 2, subject: 'English Literature', title: 'Summary Notes - Romeo & Juliet', date: '2024-02-08', size: '1.8 MB' },
@@ -83,7 +82,7 @@ function StudentPortalContent() {
           <div className="absolute -bottom-8 right-10 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="text-5xl md:text-6xl font-bold mb-3">Welcome back, Alex Johnson</h1>
+          <h1 className="text-5xl md:text-6xl font-bold mb-3">Welcome back, {user?.name || 'Student'}</h1>
           <p className="text-blue-100 text-xl">Track your academic progress and manage your coursework efficiently</p>
         </div>
       </section>
@@ -125,6 +124,17 @@ function StudentPortalContent() {
             >
               <CheckCircle size={16} className="sm:w-5 sm:h-5" />
               Report Card
+            </button>
+            <button
+              onClick={() => setActiveTab('attendance')}
+              className={`flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-base font-bold text-center transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 rounded-xl whitespace-nowrap ${
+                activeTab === 'attendance'
+                  ? 'bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg transform scale-105'
+                  : 'text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              <CalendarCheck2 size={16} className="sm:w-5 sm:h-5" />
+              Attendance
             </button>
             <button
               onClick={() => setActiveTab('notices')}
@@ -264,218 +274,9 @@ function StudentPortalContent() {
               </div>
             )}
 
-{activeTab === 'grades' && (
-              <div className="space-y-8 animate-fade-in">
-<div className="bg-gradient-to-br from-white via-slate-50 to-violet-50 rounded-[28px] border border-violet-200/70 overflow-hidden shadow-[0_30px_80px_rgba(15,23,42,0.12)] relative max-w-4xl mx-auto">
-                  {/* Decorative top border */}
-                  <div className="h-2 w-full bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500"></div>
+{activeTab === 'grades' && <ReportCard studentId={studentId} />}
 
-                  {/* School Header */}
-                  <div className="bg-gradient-to-r from-indigo-950 via-violet-900 to-slate-900 text-white p-6 sm:p-8 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/40 via-transparent to-transparent"></div>
-                    <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-cyan-500/10 rounded-full blur-2xl"></div>
-                    <GraduationCap className="absolute right-6 top-4 w-24 h-24 text-white/5 animate-float-slow" />
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="bg-white/10 p-3.5 rounded-2xl border border-white/20 backdrop-blur shadow-lg shadow-blue-900/30">
-                        <GraduationCap className="w-8 h-8 text-cyan-300" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
-                          EDUPRO HIGH SCHOOL
-                          <span className="bg-emerald-400 text-emerald-950 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow">A+ Institute</span>
-                        </h2>
-                        <p className="text-fuchsia-200/90 text-xs sm:text-sm tracking-widest uppercase mt-0.5">Academic Performance Report Card</p>
-                      </div>
-                    </div>
-                    <div className="text-center md:text-right relative z-10">
-                      <p className="text-sm font-bold text-cyan-300">Academic Year: 2025-2026</p>
-                      <p className="text-xs text-slate-300 mt-0.5">Term: Mid-Term Examination</p>
-                      <div className="mt-2 inline-flex items-center gap-1.5 bg-white/10 backdrop-blur px-3 py-1.5 rounded-full border border-white/20">
-                        <Award size={14} className="text-amber-400" />
-                        <span className="text-xs font-bold text-amber-300">Rank: #2 / 45</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Student Details Info Bar */}
-                  <div className="relative bg-gradient-to-r from-slate-50 via-violet-50 to-cyan-50 border-b border-violet-100 p-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Student Name</p>
-                      <p className="font-extrabold text-slate-800 text-base">Alex Johnson</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Class / Section</p>
-                      <p className="font-extrabold text-slate-800 text-base">10-A</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Roll Number</p>
-                      <p className="font-extrabold text-slate-800 text-base">12</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 font-bold uppercase tracking-wider text-[10px] mb-1">Student ID</p>
-                      <p className="font-extrabold text-slate-800 text-base">STU2025-012</p>
-                    </div>
-                  </div>
-
-                  {/* Subjects Grades Table (Tablet/Desktop) */}
-                  <div className="hidden sm:block p-6 sm:p-8 overflow-x-auto">
-                    <table className="w-full min-w-[600px] border-collapse">
-                      <thead>
-                        <tr className="border-b-2 border-slate-200">
-                          <th className="py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-xs">Subject</th>
-                          <th className="py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Max Marks</th>
-                          <th className="py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Marks Obtained</th>
-                          <th className="py-4 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Grade</th>
-                          <th className="py-4 text-left font-bold text-slate-500 uppercase tracking-wider text-xs pl-6">Remarks</th>
-                        </tr>
-                      </thead>
-<tbody className="divide-y divide-slate-100">
-{courses.map((subj, idx) => (
-                          <tr key={idx} className={`transition-colors ${idx % 2 === 0 ? 'bg-blue-50/20 hover:bg-blue-50/40' : 'bg-white hover:bg-slate-50/50'}`}>
-                            <td className="py-4 font-bold text-slate-900">
-                              <div className="flex items-center gap-3">
-                                <span className={`w-8 h-8 rounded-lg bg-gradient-to-br ${idx === 0 ? 'from-blue-500 to-indigo-600' : idx === 1 ? 'from-cyan-500 to-blue-600' : idx === 2 ? 'from-emerald-500 to-teal-600' : 'from-purple-500 to-fuchsia-600'} text-white flex items-center justify-center text-xs font-bold shadow-sm`}>
-                                  {subj.name.charAt(0)}
-                                </span>
-                                {subj.name}
-                              </div>
-                            </td>
-                            <td className="py-4 text-center text-slate-600 font-semibold">100</td>
-                            <td className="py-4 text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                <div className="w-20 bg-slate-200 rounded-full h-2">
-                                  <div
-                                    className={`bg-gradient-to-r ${gradeColors[subj.grade]} h-2 rounded-full`}
-                                    style={{ width: `${subj.marks}%` }}
-                                  ></div>
-                                </div>
-                                <span className="inline-flex items-center justify-center font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-full text-sm">
-                                  {subj.marks}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-4 text-center">
-                              <span className={`inline-flex items-center justify-center font-extrabold text-white text-xs px-2.5 py-1 rounded-md shadow-sm bg-gradient-to-r ${gradeColors[subj.grade]}`}>
-                                {subj.grade}
-                              </span>
-                            </td>
-                            <td className="py-4 text-slate-600 text-sm pl-6 italic">{subj.remarks}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile Subjects Grades Cards (Mobile Only) */}
-                  <div className="block sm:hidden p-4 border-t border-slate-100">
-                    <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-4">Subject Grades</h3>
-                    <div className="space-y-4">
-                      {courses.map((subj, idx) => (
-                        <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3 animate-fadeIn">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-extrabold text-slate-900 text-sm leading-tight">{subj.name}</h4>
-                              <p className="text-slate-500 text-[10px] mt-0.5 font-medium">Instructor: {subj.instructor}</p>
-                            </div>
-                            <span className={`inline-flex items-center justify-center font-extrabold text-white text-[10px] px-2 py-0.5 rounded shadow-sm bg-gradient-to-r ${gradeColors[subj.grade]}`}>
-                              {subj.grade}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-6 text-xs text-slate-700 font-semibold bg-white border border-slate-200/40 rounded-xl p-2.5">
-                            <div>
-                              <span className="text-slate-400 font-medium block text-[9px] uppercase tracking-wider">Score</span>
-                              <span className="text-slate-900 font-bold">{subj.marks} <span className="text-slate-400 font-normal">/ 100</span></span>
-                            </div>
-                            <div className="h-6 w-[1px] bg-slate-200"></div>
-                            <div>
-                              <span className="text-slate-400 font-medium block text-[9px] uppercase tracking-wider">Status</span>
-                              <span className="text-emerald-600 font-bold">Passed</span>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <span className="text-slate-400 font-medium block text-[9px] uppercase tracking-wider mb-1">Remarks</span>
-                            <p className="text-slate-600 text-xs italic bg-white border border-slate-200/40 rounded-xl p-3 leading-relaxed">
-                              "{subj.remarks}"
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Summary Section */}
-                  <div className="border-t border-slate-200 bg-slate-50/50 p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                    {/* Performance Summary Indicators */}
-                    <div className="space-y-4">
-                      <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Performance Metrics</h3>
-                      <div className="grid grid-cols-1 min-[450px]:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border border-blue-400 rounded-2xl p-3 sm:p-4 shadow-md shadow-blue-500/20">
-                          <p className="text-blue-100 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Cumulative Percentage</p>
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-xl sm:text-2xl font-extrabold">96.25%</span>
-                            <span className="text-blue-200 text-xs font-semibold">/ 100%</span>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border border-emerald-400 rounded-2xl p-3 sm:p-4 shadow-md shadow-emerald-500/20">
-                          <p className="text-emerald-100 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Attendance Rate</p>
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-xl sm:text-2xl font-extrabold">94%</span>
-                            <span className="text-emerald-200 text-xs font-semibold">/ 100%</span>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white border border-purple-400 rounded-2xl p-3 sm:p-4 shadow-md shadow-purple-500/20">
-                          <p className="text-purple-100 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Total Score</p>
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-xl sm:text-2xl font-extrabold">
-                              {courses.reduce((sum, c) => sum + (c.marks || 0), 0)}
-                            </span>
-                            <span className="text-purple-200 text-xs font-semibold">/ {courses.length * 100}</span>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-amber-500 to-orange-600 text-white border border-amber-400 rounded-2xl p-3 sm:p-4 shadow-md shadow-amber-500/20 flex flex-col justify-center">
-                          <p className="text-amber-100 font-bold uppercase tracking-wider text-[9px] sm:text-[10px] mb-1 leading-normal">Result Status</p>
-                          <span className="text-xs sm:text-base font-extrabold flex items-center gap-1 mt-0.5">
-                            <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Passed
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* School Remarks & Seals */}
-                    <div className="space-y-4 flex flex-col justify-between">
-                      <div>
-                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Teacher Remarks</h3>
-                        <p className="text-slate-600 text-sm italic leading-relaxed bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                          "Alex has consistently demonstrated academic excellence and active participation in class discussions. Keep up the high standards!"
-                        </p>
-                      </div>
-                      
-                      {/* Buttons to print / download */}
-                      <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full">
-                        <button
-                          onClick={() => {
-                            window.open('/print-report', '_blank')
-                          }}
-                          className="flex-1 min-w-[150px] bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-blue-600/25 transition-all duration-300 flex items-center justify-center gap-2"
-                        >
-                          <Printer size={18} /> Print Report
-                        </button>
-                        <button
-                          onClick={() => {
-                            window.open('/print-report', '_blank')
-                          }}
-                          className="flex-1 min-w-[150px] bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2"
-                        >
-                          <Download size={18} /> Save as PDF
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {activeTab === 'attendance' && <AttendanceCalendar studentId={studentId} />}
 
             {/* Notices Tab */}
             {activeTab === 'notices' && (
@@ -576,46 +377,7 @@ function StudentPortalContent() {
             )}
 
             {/* Homework Tab */}
-            {activeTab === 'homework' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-6">Homework Assignments</h3>
-                <div className="space-y-4">
-                  {homework.map((item) => (
-                    <div key={item.id} className="group bg-gradient-to-br from-orange-50 to-slate-50 p-4 sm:p-6 rounded-2xl border-2 border-orange-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div className="flex-1 min-w-0 w-full">
-                          <div className="flex flex-wrap items-center gap-3 mb-2">
-                            <span className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase">
-                              Homework
-                            </span>
-                            <span className="text-sm font-semibold text-slate-600">{item.subject}</span>
-                          </div>
-                          <h4 className="text-base sm:text-lg font-bold text-slate-900 break-words">{item.title}</h4>
-                          <p className="text-slate-500 text-sm mt-2">Assigned: {item.date}</p>
-                          <p className="text-slate-600 text-sm mt-1 inline-flex items-center gap-1.5">
-                            <Clock size={14} className="text-orange-500" /> Due: {item.due}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-orange-100 shrink-0">
-                          {item.status === 'submitted' ? (
-                            <span className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-semibold text-sm">
-                              <CheckCircle size={18} /> Submitted
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-semibold text-sm">
-                              <Clock size={18} /> Pending
-                            </span>
-                          )}
-                          <button className="text-slate-600 hover:text-orange-600 hover:bg-orange-50 p-2 rounded-lg transition">
-                            <Download size={20} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {activeTab === 'homework' && <HomeworkBoard studentId={studentId} />}
 
 {/* Timetable Tab */}
             {activeTab === 'timetable' && (
